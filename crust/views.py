@@ -310,7 +310,7 @@ def calculate_pr(request, drill_id, data_type):
         'status': 'success',
     }
 
-    objs = Record.objects.filter(drill_id=drill_id).order_by('-time')
+    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
     if len(objs) == 0:
         res['message'] = 'no data'
         res['status'] = 'fail'
