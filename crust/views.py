@@ -265,7 +265,7 @@ def calculate_pb(request, drill_id, data_type):
         'status': 'success',
     }
 
-    objs = Record.objects.filter(drill_id=drill_id).order_by('-time')
+    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
     if len(objs) == 0:
         res['message'] = 'no data'
         res['status'] = 'fail'
@@ -280,10 +280,12 @@ def calculate_pb(request, drill_id, data_type):
         pressure = []
         if data_type == "upWell":
             objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-            pressure = [obj.upStress for obj in objs]
+            pressure =[float(obj.upStress) for obj in objs]
+            print("pressure len", len(pressure))
         else:
             objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-            pressure = [obj.downStress for obj in objs]
+            pressure = [float(obj.downStress) for obj in objs]
+            print("pressure len", len(pressure))
 
         est = estimate_pb(pressure, st_sel, et_sel)
         if est is None:

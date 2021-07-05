@@ -39,7 +39,11 @@ def estimate_pb(pressure, st_sel, et_sel):
 
     print(np.where(mask == True)[0])
 
-    index = np.where(mask == True)[0][0]
+    indexs = np.where(mask == True)[0]
+    if len(indexs) == 0:
+        return None
+
+    index = indexs[0]
     index = st_pred + index
     index = int(index)
 
