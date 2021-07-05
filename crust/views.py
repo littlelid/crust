@@ -50,24 +50,33 @@ def drill(request, drill_id=None):
     if request.method == 'GET':
 
         objs = []
-        if drill_id is not None:  # GET "/drill/{id}" 获得id的钻孔
-            objs = Drill.objects.filter(pk=drill_id)
+        try:
+            if drill_id is not None:  # GET "/drill/{id}" 获得id的钻孔
+                objs = Drill.objects.filter(pk=drill_id)
 
-        else:   #GET "/drill?pageCur=1&pageSize=10" 获得所有数据（第pageCur页，每页pageSize个，页号从1开始），返回list
-            pageCur = int(request.GET.get('pageCur'))
-            pageSize = int(request.GET.get('pageSize'))
+            else:   #GET "/drill?pageCur=1&pageSize=10" 获得所有数据（第pageCur页，每页pageSize个，页号从1开始），返回list
+                pageCur = request.GET.get('pageCur')
+                pageSize = request.GET.get('pageSize')
 
-            objs = Drill.objects.all()
+                objs = Drill.objects.all()
 
 
-            if(pageCur is not None and pageSize is not None):
-                p = Paginator(objs, pageSize)
-                if(pageCur <= p.num_pages and pageCur > 0):
-                    objs = p.page(pageCur).object_list
-                else:
-                    objs = []
-        res['message'] = "get %s drill" % len(objs)
-        res['status'] = 'success' if len(objs) >= 1 else 'fail'
+                if(pageCur is not None and pageSize is not None):
+                    pageCur = int(pageCur)
+                    pageSize = int(pageSize)
+                    p = Paginator(objs, pageSize)
+                    if(pageCur <= p.num_pages and pageCur > 0):
+                        objs = p.page(pageCur).object_list
+                    else:
+                        objs = []
+
+            res['message'] = "get %s drill" % len(objs)
+            res['status'] = 'success' if len(objs) >= 1 else 'fail'
+        except Exception as e:
+
+            res['message'] = "get drill: " + str(e)
+            res['status'] = 'fail'
+
 
         serialized_obj = serializers.serialize('json', objs)
         objs = json.loads(serialized_obj)
@@ -113,7 +122,7 @@ def drill(request, drill_id=None):
         res['message'] = "delete %s drill" % num_objs
         res['status'] = 'success' if num_objs == 1 else 'fail'
 
-        #question = get_object_or_404(Drill, pk=id)
+
 
 
     elif request.method == 'PUT':
