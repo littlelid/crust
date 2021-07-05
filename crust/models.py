@@ -5,21 +5,23 @@ import datetime
 class Drill(models.Model):
     """Model representing a book (but not a specific copy of a book)."""
 
-    name = models.CharField(max_length=200, default='')
+    name = models.CharField(max_length=50, default='')
 
-    deep = models.FloatField(default=0)
-    position = models.FloatField(default=0)
+    deep = models.CharField(max_length=50, default='')
+    position = models.CharField(max_length=50, default='')
 
-    rockAvgCapacity = models.FloatField(default=0)
-    liquidCapacity = models.FloatField(default=0)
-    longitude = models.FloatField(default=0)
-    latitude = models.FloatField(default=0)
-    staticWaterLevel = models.FloatField(default=0)
-    measureBackground = models.CharField(max_length=200, default='')
-    measureUnit = models.CharField(max_length=200, default='')
-    measurePrincipal = models.CharField(max_length=200, default='')
+    rockAvgCapacity = models.CharField(max_length=50, default='')
+    liquidCapacity = models.CharField(max_length=50, default='')
+    longitude = models.CharField(max_length=50, default='')
+    latitude = models.CharField(max_length=50, default='')
+    staticWaterLevel = models.CharField(max_length=50, default='')
+    measureBackground = models.CharField(max_length=50, default='')
+    measureUnit = models.CharField(max_length=50, default='')
+    measurePrincipal = models.CharField(max_length=50, default='')
+
     measureDate = models.DateField(default=datetime.date.today)
-    comment = models.CharField(max_length=200,default='')
+
+    comment = models.CharField(max_length=50, default='')
 
 
     def __str__(self):
@@ -35,19 +37,13 @@ class Record(models.Model):
 
 class Drill_Upwell_Data(models.Model):
 
-    #
-
     index   = models.IntegerField()
     upStress = models.FloatField()   # 井上压力值（MPa）
     injectFlow = models.FloatField() # 注入流量值（L/min）
     backFlow = models.FloatField()   # 回水流量值（L/min）
 
     inject = models.FloatField()       # 注入量（L/min）
-
-
     back = models.FloatField()       # 回流量（L/min)
-
-
     record = models.ForeignKey('Record', on_delete=models.CASCADE)
 
 

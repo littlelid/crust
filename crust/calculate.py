@@ -206,7 +206,7 @@ def estimate_pr_muskat(pressure, st_sel, et_sel):
         y_search = pressure_hat[st_search: et_search]
 
         # X_search_exp = np.exp(X_search)
-        # y_search_log = np.log(y_search)
+        # y_search_log = np.logs(y_search)
 
         try:
             popt, pcov = optimize.curve_fit(exp_func, X_search, y_search)

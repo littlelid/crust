@@ -7,9 +7,10 @@ from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data, Record
 
 from django.core import serializers
 from django.core.paginator import Paginator
-
+from django.http import QueryDict
 from django.http import HttpResponse
 
+from django.http.multipartparser import MultiPartParser
 
 import os, datetime
 
@@ -19,6 +20,14 @@ from .utils import save_downWell, save_upWell
 from .calculate import estimate_pb, estimate_pr_tangent, estimate_pr_muskat
 
 import json
+
+import logging
+
+# 实例化logging对象,并以当前文件的名字作为logger实例的名字
+logger = logging.getLogger(__name__)
+# 生成一个名字叫做 collect 的日志实例
+logger_c = logging.getLogger('file')
+
 # Create your views here.
 def index(request):
     x = {}
@@ -30,34 +39,35 @@ def index(request):
 
 @csrf_exempt
 def drill(request, drill_id=None):
+    logger.info(request.method + ' '+ request.path_info)
 
+    res = {
+        'data': None,
+        'message': '',
+        'status': 'success',
+    }
 
     if request.method == 'GET':
 
-        print(request.GET)
-        print(request.path)
-
         objs = []
         if drill_id is not None:  # GET "/drill/{id}" 获得id的钻孔
-            print(drill_id)
-            obj = Drill.objects.get(pk=drill_id)
-
-            objs.append(obj)
-
+            objs = Drill.objects.filter(pk=drill_id)
 
         else:   #GET "/drill?pageCur=1&pageSize=10" 获得所有数据（第pageCur页，每页pageSize个，页号从1开始），返回list
+            pageCur = int(request.GET.get('pageCur'))
+            pageSize = int(request.GET.get('pageSize'))
 
-            pageCur = request.GET['pageCur']
-            pageSize = request.GET['pageSize']
-
-            objs_all = Drill.objects.all()
-
-            p = Paginator(objs_all, pageSize)
-            objs = p.page(pageCur).object_list
+            objs = Drill.objects.all()
 
 
-
-
+            if(pageCur is not None and pageSize is not None):
+                p = Paginator(objs, pageSize)
+                if(pageCur <= p.num_pages and pageCur > 0):
+                    objs = p.page(pageCur).object_list
+                else:
+                    objs = []
+        res['message'] = "get %s drill" % len(objs)
+        res['status'] = 'success' if len(objs) >= 1 else 'fail'
 
         serialized_obj = serializers.serialize('json', objs)
         objs = json.loads(serialized_obj)
@@ -65,72 +75,87 @@ def drill(request, drill_id=None):
         for obj in objs:
             obj['fields']['id'] = obj['pk']
 
-        serialized_obj = json.dumps(objs)
-
-        print(serialized_obj)
-
-        return HttpResponse(serialized_obj, content_type='application/json')
+        res['data'] = objs
 
 
-        #return JsonResponse(serialized_obj)
-        #print(serialized_obj)
-        #print()
+
+        #serialized_obj = json.dumps(objs)
+        #return HttpResponse(serialized_obj, content_type='application/json')
 
     if request.method == 'POST':
-        params = request.POST.dict()
-        print(params)
 
-        params.pop('id', None)
-        obj = Drill(**params)
+        try:
+            params = request.POST.dict()
+            #print(params)
+            params.pop('id', None)
+            obj = Drill(**params)
 
-        obj.save()
+            obj.save()
+
+            res['message'] = "post one drill"
+            res['status'] = 'success'
+
+            logger.info('saved one Drill: ' + str(params))
+        except Exception as e:
+            res['message'] = "post one drill: " + str(e)
+            res['status'] = 'fail'
+
 
 
 
     elif request.method == 'DELETE':
         print(drill_id)
 
-        obj = Drill.objects.get(pk=drill_id)
+        objs = Drill.objects.filter(pk=drill_id)
+        num_objs = len(objs)
+        objs.delete()
 
-        obj.delete()
+        res['message'] = "delete %s drill" % num_objs
+        res['status'] = 'success' if num_objs == 1 else 'fail'
 
-        print(obj)
         #question = get_object_or_404(Drill, pk=id)
+
 
     elif request.method == 'PUT':
 
         try:
             obj = Drill.objects.get(pk=drill_id)
 
-            params =  request.PUT.dict()
-            for k, v in params:
-                setattr(obj, k, v)
+            params = MultiPartParser(request.META, request, request.upload_handlers).parse()[0]
+            params = params.dict()
+
+            print(params)
+            for k, v in params.items():
+                #print(k, v)
+                if (hasattr(obj, k)):
+                    setattr(obj, k, v)
 
             obj.save()
-        except:
-            pass
 
 
-    return  JsonResponse({'status':'good'})
+            res['message'] = "update drill %s" % drill_id
+            res['status'] = 'success'
+            #params['id'] = obj.id
+            #logger.info('updated one Drill: ' + str(params))
 
+        except Exception as e:
+            res['message'] = "update drill %s: %s" % (drill_id, str(e))
+            res['status'] = 'fail'
+
+    logger.info(res['status'] + ' ' + res['message'])
+
+    return JsonResponse(res)
 
 
 @csrf_exempt
 def fileUpload(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
     #print(drill_id, data_type)
-
-    #删除旧数据
-    # if data_type == "upWell":
-    #     res = Drill_Upwell_Data.objects.filter(drill_id__exact=drill_id)
-    #     print(len(res))
-    #
-    #     res.delete()
-    # else:
-    #     res = Drill_Downwell_Data.objects.filter(drill_id__exact=drill_id)
-    #     print(len(res))
-    #
-    #     res.delete()
-    #return JsonResponse({'status': 'good'})
+    res = {
+        'data': None,
+        'message': 'file upload',
+        'status': 'success',
+    }
 
     if request.method == "POST":  # 请求方法为POST时，进行处理
         myFile = request.FILES.get("file", None)  # 获取上传的文件，如果没有文件，则默认为None
@@ -146,15 +171,21 @@ def fileUpload(request, drill_id, data_type):
         record.save()
 
         if data_type == "upWell":
-            save_upWell(filename, record.id)
-        else:
-            save_downWell(filename, record.id)
+            status, message = save_upWell(filename, record.id)
 
-    return JsonResponse({'status':'good'})
+        else:
+            status, message = save_downWell(filename, record.id)
+
+        if status is False:
+            res['status'] = 'fail'
+            res['message'] = 'file upload %s: %s' % (myFile.name, message)
+    logger.info(res['status'] + ' ' + res['message'])
+    return JsonResponse(res)
 
 
 @csrf_exempt
-def record(request, drill_id, data_type, record_id=None):
+def record(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': None,
         'message': 'record',
@@ -163,58 +194,75 @@ def record(request, drill_id, data_type, record_id=None):
 
     if request.method == "DELETE":
         try:
-            Record.objects.get(pk=record_id).delete()
 
-            res['message'] = 'delete'
+            objs = Record.objects.filter(drill_id=drill_id)
+            num_objs = len(objs)
+            objs.delete()
+            res['message'] = 'delete' + str(num_objs) + 'obj(s).'
 
         except Exception as e:
             res['message'] = str(e)
             res['status'] = 'fail'
 
     elif request.method == "GET":
-        try:
-            data = {}
-            if data_type == 'upWell':
-                objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-                objs = [model_to_dict(obj) for obj in objs]
+        objs = Record.objects.filter(drill_id=1).order_by('-time')
+        if len(objs) == 0:
+            res['message'] = 'no data'
+            res['status'] = 'fail'
+        else:
+            record_id = objs[0].id
+            print('record id is', record_id)
+            try:
+                data = {}
+                if data_type == 'upWell':
+                    objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+                    objs = [model_to_dict(obj) for obj in objs]
 
-                data['axisX'] = list(range(len(objs)))
-                fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
-                for field in fields:
-                    data[field] = [ obj[field] for obj in objs]
+                    data['axisX'] = list(range(len(objs)))
+                    fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
+                    for field in fields:
+                        data[field] = [ obj[field] for obj in objs]
 
-                print(data)
-                print(data.keys())
+                    #print(data)
+                    print(data.keys())
 
-            else:
-                objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-                objs = [model_to_dict(obj) for obj in objs]
+                else:
+                    objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+                    objs = [model_to_dict(obj) for obj in objs]
 
-                data['axisX'] = list(range(len(objs)))
-                fields = ['downStress', 'measureStress', 'downFlow', 'downTemperature']
-                for field in fields:
-                    data[field] = [obj[field] for obj in objs]
+                    data['axisX'] = list(range(len(objs)))
+                    fields = ['downStress', 'measureStress', 'downFlow', 'downTemperature']
+                    for field in fields:
+                        data[field] = [obj[field] for obj in objs]
 
-            res['data'] = data
-            res['message'] = 'get'
+                res['data'] = data
+                res['message'] = 'get'
 
-        except Exception as e:
-            res['message'] = str(e)
-            res['status']  = 'fail'
+            except Exception as e:
+                res['message'] = str(e)
+                res['status'] = 'fail'
 
-    #contact_list = Contact.objects.all()
-    #paginator = Paginator(contact_list, 25)  # Show 25 contacts per page.
+    logger.info(res['status'] + ' ' + res['message'])
 
     return JsonResponse(res)
 
 #GET "/drill/{id}/upWell/{id}/pb?start={st}&end={ed}"
 @csrf_exempt
-def calculate_pb(request, drill_id, data_type, record_id):
+def calculate_pb(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': None,
         'message': 'calculate_pb',
         'status': 'success',
     }
+
+    objs = Record.objects.filter(drill_id=1).order_by('-time')
+    if len(objs) == 0:
+        res['message'] = 'no data'
+        res['status'] = 'fail'
+        return JsonResponse(res)
+    else:
+        record_id = objs[0].id
 
     if request.method == "GET":
         st_sel = int(request.GET['start'])
@@ -236,17 +284,28 @@ def calculate_pb(request, drill_id, data_type, record_id):
 
         res['data'] = est
 
+    logger.info(res['status'] + ' ' + res['message'])
     return JsonResponse(res)
 
 
+
 @csrf_exempt
-def calculate_pr(request, drill_id, data_type, record_id):
-    print(request, drill_id, data_type, record_id)
+def calculate_pr(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
+    print(request, drill_id, data_type)
     res = {
         'data': None,
         'message': 'good',
         'status': 'success',
     }
+
+    objs = Record.objects.filter(drill_id=1).order_by('-time')
+    if len(objs) == 0:
+        res['message'] = 'no data'
+        res['status'] = 'fail'
+        return JsonResponse(res)
+    else:
+        record_id = objs[0].id
 
     if request.method == "GET":
         st_sel = int(request.GET['start'])
@@ -273,5 +332,7 @@ def calculate_pr(request, drill_id, data_type, record_id):
             return JsonResponse(res)
 
         res['data'] = est
+
+    logger.info(res['status'] + ' ' + res['message'])
 
     return JsonResponse(res)
