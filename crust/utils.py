@@ -94,10 +94,10 @@ def save_downWell(filename, record_id):
             params = {}
 
             params['index'] = index
-            params['downStress'] = float(record[0])
-            params['measureStress'] = float(record[1])
-            params['downFlow'] = float(record[2])
-            params['downTemperature'] = float(record[3])
+            params['downStress'] = record[0]
+            params['measureStress'] = record[1]
+            params['downFlow'] = record[2]
+            params['downTemperature'] = record[3]
             params['record_id'] = record_id
 
             objs.append(Drill_Downwell_Data(**params))

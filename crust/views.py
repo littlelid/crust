@@ -77,7 +77,6 @@ def drill(request, drill_id=None):
             res['message'] = "get drill: " + str(e)
             res['status'] = 'fail'
 
-
         serialized_obj = serializers.serialize('json', objs)
         objs = json.loads(serialized_obj)
 
@@ -85,8 +84,6 @@ def drill(request, drill_id=None):
             obj['fields']['id'] = obj['pk']
 
         res['data'] = objs
-
-
 
         #serialized_obj = json.dumps(objs)
         #return HttpResponse(serialized_obj, content_type='application/json')
@@ -108,9 +105,6 @@ def drill(request, drill_id=None):
         except Exception as e:
             res['message'] = "post one drill: " + str(e)
             res['status'] = 'fail'
-
-
-
 
     elif request.method == 'DELETE':
         print(drill_id)
@@ -220,7 +214,7 @@ def record(request, drill_id, data_type):
             res['status'] = 'fail'
 
     elif request.method == "GET":
-        objs = Record.objects.filter(drill_id=drill_id).order_by('-time')
+        objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
         if len(objs) == 0:
             res['message'] = 'no data'
             res['status'] = 'fail'

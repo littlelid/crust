@@ -38,12 +38,12 @@ class Record(models.Model):
 class Drill_Upwell_Data(models.Model):
 
     index   = models.IntegerField()
-    upStress = models.FloatField()   # 井上压力值（MPa）
-    injectFlow = models.FloatField() # 注入流量值（L/min）
-    backFlow = models.FloatField()   # 回水流量值（L/min）
+    upStress = models.CharField(max_length=50, default='')   # 井上压力值（MPa）
+    injectFlow = models.CharField(max_length=50, default='') # 注入流量值（L/min）
+    backFlow = models.CharField(max_length=50, default='')   # 回水流量值（L/min）
 
-    inject = models.FloatField()       # 注入量（L/min）
-    back = models.FloatField()       # 回流量（L/min)
+    inject = models.CharField(max_length=50, default='')      # 注入量（L/min）
+    back = models.CharField(max_length=50, default='')      # 回流量（L/min)
     record = models.ForeignKey('Record', on_delete=models.CASCADE)
 
 
@@ -56,11 +56,11 @@ class Drill_Downwell_Data(models.Model):
 
     #time = models.TimeField(auto_now=False, auto_now_add=False)        # 采集时间
 
-    index   = models.IntegerField()
-    downStress = models.FloatField()
-    measureStress = models.FloatField()
-    downFlow = models.FloatField()
-    downTemperature = models.FloatField()
+    index = models.IntegerField()
+    downStress = models.CharField(max_length=50, default='')
+    measureStress = models.CharField(max_length=50, default='')
+    downFlow = models.CharField(max_length=50, default='')
+    downTemperature = models.CharField(max_length=50, default='')
 
 
     record = models.ForeignKey('Record', on_delete=models.CASCADE)
