@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-69g%=@l&z*084*$o-%93=z$qq=(3nr-uo*c*no7rde0@1#(j$!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['101.132.131.14', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
 
     #Add our new application
     'catalog.apps.CatalogConfig', # This object was created in /catalog/app.py
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -137,7 +139,7 @@ LOG_DIR = os.path.join(BASE_DIR, "logs")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": { # 定义了两种日志格式
+    "formatters": { # 定义了两种日志格�?
         'standard': {
               'format': '[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d]'
                    '[%(levelname)s][%(message)s]'
@@ -146,18 +148,18 @@ LOGGING = {
             "format": "%(levelname)s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
         },
-        'simple': { # 简单
+        'simple': { # 简�?
             'format': '[%(levelname)s][%(asctime)s][%(filename)s:%(lineno)d]%(message)s'
         },
     },
     "handlers": { # 定义日志处理方式
-        'file': { # Info级别以上保存到日志文件
+        'file': { # Info级别以上保存到日志文�?
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件，根据文件大小自动切
+            'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件，根据文件大小自动�?
             'filename': os.path.join(LOG_DIR,"info.logs"),  # 日志文件
             'maxBytes': 1024 * 1024 * 50,  # 日志大小 50M
             'backupCount': 2,  # 备份数为 2
-            'formatter': 'simple', # 简单格式
+            'formatter': 'simple', # 简单格�?
             'encoding': 'utf-8',
         },
         "console": { # 打印到终端console
@@ -167,7 +169,7 @@ LOGGING = {
         },
         'error': {
             'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件，自动切
+            'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件，自动�?
             'filename': os.path.join(LOG_DIR, "err.log"),  # 日志文件
             'maxBytes': 1024 * 1024 * 50,  # 日志大小 50M
             'backupCount': 2,
@@ -177,15 +179,42 @@ LOGGING = {
     },
     "root": {"level": "INFO", "handlers": ["console", "file"]},
     "loggers": {
-        "django.request": { # Django的request发生error会自动记录
+        "django.request": { # Django的request发生error会自动记�?
             "handlers": ["file", "error"],
             "level": "DEBUG",
-            "propagate": True,  # 向不向更高级别的logger传递
+            "propagate": True,  # 向不向更高级别的logger传�?
         },
-        "django.security.DisallowedHost": { # 对于不在 ALLOWED_HOSTS 中的请求不发送报错邮件
+        "django.security.DisallowedHost": { # 对于不在 ALLOWED_HOSTS 中的请求不发送报错邮�?
             "level": "ERROR",
             "handlers": ["console", "file"],
             "propagate": True,
         },
     },
 }
+
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_WHITELIST = ()
+ 
+CORS_ALLOW_METHODS = (
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+    'VIEW',
+)
+ 
+CORS_ALLOW_HEADERS = (
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+)
