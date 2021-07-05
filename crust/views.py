@@ -141,7 +141,6 @@ def drill(request, drill_id=None):
 
             obj.save()
 
-
             res['message'] = "update drill %s" % drill_id
             res['status'] = 'success'
             #params['id'] = obj.id
@@ -166,28 +165,35 @@ def fileUpload(request, drill_id, data_type):
         'status': 'success',
     }
 
-    if request.method == "POST":  # 请求方法为POST时，进行处理
-        myFile = request.FILES.get("file", None)  # 获取上传的文件，如果没有文件，则默认为None
-        #print(myFile, myFile.size)
-        filename = "./crust/static/files/" + myFile.name
-        f = open(filename, 'wb')
-        for chunk in myFile.chunks():
-            f.write(chunk)
-        f.close()
+    try:
+        drill = Drill.objects.filter(pk=drill_id)
 
-        now = datetime.datetime.now()
-        record = Record(data_type=data_type, drill_id=drill_id, time=now)
-        record.save()
+        if request.method == "POST":  # 请求方法为POST时，进行处理
+            myFile = request.FILES.get("file", None)  # 获取上传的文件，如果没有文件，则默认为None
+            #print(myFile, myFile.size)
+            filename = "./crust/static/files/" + myFile.name
+            f = open(filename, 'wb')
+            for chunk in myFile.chunks():
+                f.write(chunk)
+            f.close()
 
-        if data_type == "upWell":
-            status, message = save_upWell(filename, record.id)
 
-        else:
-            status, message = save_downWell(filename, record.id)
+            now = datetime.datetime.now()
+            record = Record(data_type=data_type, drill_id=drill_id, time=now)
+            record.save()
 
-        if status is False:
-            res['status'] = 'fail'
-            res['message'] = 'file upload %s: %s' % (myFile.name, message)
+            if data_type == "upWell":
+                status, message = save_upWell(filename, record.id)
+            else:
+                status, message = save_downWell(filename, record.id)
+
+            if status is False:
+                res['status'] = 'fail'
+                res['message'] = 'file upload %s: %s' % (myFile.name, message)
+    except Exception as e:
+        res['status'] = 'fail'
+        res['message'] = 'file upload %s: %s' % (myFile.name, str(e))
+
     logger.info(res['status'] + ' ' + res['message'])
     return JsonResponse(res)
 
@@ -207,14 +213,14 @@ def record(request, drill_id, data_type):
             objs = Record.objects.filter(drill_id=drill_id)
             num_objs = len(objs)
             objs.delete()
-            res['message'] = 'delete' + str(num_objs) + 'obj(s).'
+            res['message'] = 'delete ' + str(num_objs) + ' obj'
 
         except Exception as e:
             res['message'] = str(e)
             res['status'] = 'fail'
 
     elif request.method == "GET":
-        objs = Record.objects.filter(drill_id=1).order_by('-time')
+        objs = Record.objects.filter(drill_id=drill_id).order_by('-time')
         if len(objs) == 0:
             res['message'] = 'no data'
             res['status'] = 'fail'
@@ -265,7 +271,7 @@ def calculate_pb(request, drill_id, data_type):
         'status': 'success',
     }
 
-    objs = Record.objects.filter(drill_id=1).order_by('-time')
+    objs = Record.objects.filter(drill_id=drill_id).order_by('-time')
     if len(objs) == 0:
         res['message'] = 'no data'
         res['status'] = 'fail'
@@ -308,7 +314,7 @@ def calculate_pr(request, drill_id, data_type):
         'status': 'success',
     }
 
-    objs = Record.objects.filter(drill_id=1).order_by('-time')
+    objs = Record.objects.filter(drill_id=drill_id).order_by('-time')
     if len(objs) == 0:
         res['message'] = 'no data'
         res['status'] = 'fail'
