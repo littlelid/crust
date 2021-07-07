@@ -2,14 +2,32 @@ import numpy as np
 from scipy import optimize
 from scipy.signal import savgol_filter
 import json
+from .utils import piecewise_linear_two, linear_func, exp_func, my_linear_regreesion
 
-def linear_func(x, k, b):
-    return k * x + b
 
-def exp_func(x, a, b, c):
-    return a * np.exp(-b * x) + c
 
 def estimate_pb(pressure, st_sel, et_sel):
+
+    try:
+        pressure = pressure[st_sel:et_sel]
+        pb_index = int(np.argmax(pressure))
+        pb = float(pressure[pb_index])
+
+        pb_index = pb_index + st_sel
+        res = {
+            'value': pb,
+            'lines': None,
+            'scatters': {
+                'max_point_coord': [pb_index, pb]
+            }
+        }
+    except Exception as e:
+        print(str(e))
+        return None
+
+    return res
+
+def estimate_pr(pressure, st_sel, et_sel):
 
     pressure_hat = savgol_filter(pressure, 7, 1) # smooth
 
@@ -60,8 +78,7 @@ def estimate_pb(pressure, st_sel, et_sel):
         'y': y_target,
     }
 
-    json.dumps(target_line)
-    print("111")
+    #json.dumps(target_line)
 
 
     fitted_line = {
@@ -69,8 +86,7 @@ def estimate_pb(pressure, st_sel, et_sel):
         'x': X_pred,
         'y': y_pred,
     }
-    json.dumps(fitted_line)
-    print("222")
+    #json.dumps(fitted_line)
 
     cross_line0 = {
         'label': 'Pr',
@@ -78,16 +94,15 @@ def estimate_pb(pressure, st_sel, et_sel):
         'y': [pr, pr],
     }
 
-    json.dumps(cross_line0)
-    print("333")
+    #json.dumps(cross_line0)
 
     cross_line1 = {
         'label': '',
         'x': [index, index],
         'y': [min(y_target), max(y_target)],
     }
-    json.dumps(cross_line1)
-    print("444")
+    #json.dumps(cross_line1)
+
 
     lines = {
         'target_line': target_line,
@@ -103,11 +118,11 @@ def estimate_pb(pressure, st_sel, et_sel):
 
 
 
-    print(index, pressure_hat[index])
-    print(res)
+    #print(index, pressure_hat[index])
+    #print(res)
     return res
 
-def estimate_pr_tangent(pressure, st_sel, et_sel):
+def estimate_ps_tangent(pressure, st_sel, et_sel):
     print(len(pressure))
     pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
 
@@ -149,7 +164,7 @@ def estimate_pr_tangent(pressure, st_sel, et_sel):
     index = st_pred + indexs[0]
     index = int(index)
 
-    pr = pressure_hat[index]
+    ps = pressure_hat[index]
 
     X_pred = X_pred.tolist()
     y_target = y_target.tolist()
@@ -167,7 +182,7 @@ def estimate_pr_tangent(pressure, st_sel, et_sel):
     cross_line0 = {
         'label': 'Pr',
         'x': [min(X_pred), max(X_pred)],
-        'y': [pr, pr],
+        'y': [ps, ps],
     }
     cross_line1 = {
         'label': '',
@@ -183,13 +198,13 @@ def estimate_pr_tangent(pressure, st_sel, et_sel):
     }
 
     res = {
-        'value': pr,
+        'value': ps,
         'lines': lines,
     }
 
     return res
 
-def estimate_pr_muskat(pressure, st_sel, et_sel):
+def estimate_ps_muskat(pressure, st_sel, et_sel):
     pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
 
 
@@ -232,7 +247,7 @@ def estimate_pr_muskat(pressure, st_sel, et_sel):
     y_target = pressure_hat[st_sel: et_sel]
     y_pred = exp_func(X_pred - best_st, *best_popt)
 
-    pr = y_pred[0]
+    ps = y_pred[0]
 
     X_pred = X_pred.tolist()
     y_target = y_target.tolist()
@@ -251,12 +266,12 @@ def estimate_pr_muskat(pressure, st_sel, et_sel):
     cross_line0 = {
         'label': 'Pr',
         'x': [X_pred[0]-2, X_pred[0]],
-        'y': [pr, pr],
+        'y': [ps, ps],
     }
     cross_line1 = {
         'label': '',
         'x': [X_pred[0], X_pred[0]],
-        'y': [0, pr],
+        'y': [0, ps],
     }
 
     cross_line2 = {
@@ -274,7 +289,233 @@ def estimate_pr_muskat(pressure, st_sel, et_sel):
     }
 
     res = {
-        'value': pr,
+        'value': ps,
+        'lines': lines,
+    }
+
+    return res
+
+
+def estimate_ps_dp_dt(pressure, st_sel, et_sel):
+    pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+    pressure_hat_sel = pressure_hat[st_sel: et_sel]
+    dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
+    dp_dt = -abs(dp_dt)
+
+    X = pressure_hat_sel[1:]
+    X_range = (np.max(X) - np.min(X))
+    X_min = np.min(X)
+    X_norm = (X - X_min) / X_range
+
+    y_target = -dp_dt
+    y_range = np.max(y_target) - np.min(y_target)
+    y_min = np.min(y_target)
+    y_norm = (y_target - y_min) / y_range
+
+    popt, pcov = optimize.curve_fit(piecewise_linear_two, X_norm, y_norm,
+                                    bounds=[[np.min(X_norm), -np.inf, 0, 0], [np.max(X_norm), np.inf, np.inf, np.inf]])
+
+    y_pred = piecewise_linear_two(X_norm, *popt) * y_range + y_min
+
+    x0 = popt[0]
+
+    ps = float(x0 * X_range + X_min)
+
+    X = X.tolist()
+    y_target = y_target.tolist()
+    y_pred = y_pred.tolist()
+
+
+    target_line = {
+        'label': 'Pressure',
+        'x': X,
+        'y': y_target,
+    }
+    fitted_line = {
+        'label': 'Fitted line',
+        'x': X,
+        'y': y_pred,
+    }
+    lines = {
+        'target_line': target_line,
+        'fitted_line': fitted_line,
+    }
+
+    cross_line0 = {
+        'label': 'Ps',
+        'x': [ps, ps],
+        'y': [min(y_target), max(y_target)],
+    }
+
+    lines = {
+        'target_line': target_line,
+        'fitted_line': fitted_line,
+        'cross_line0': cross_line0,
+    }
+
+    res = {
+        'value': ps,
+        'lines': lines,
+    }
+
+    return res
+
+    #plt.plot(X, y_target, "o")
+    #plt.plot(X, y_pred)
+
+
+def estimate_ps_dt_dp(pressure, st_sel, et_sel, resolution=40):
+    pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+    pressure_hat_sel = pressure_hat[st_sel: et_sel]
+    dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
+    dp_dt = -abs(dp_dt)
+
+    mask = abs(dp_dt) > 1e-5
+
+    dt_dp = 1 / (dp_dt - 1e-3)
+
+    X = pressure_hat_sel[1:][mask][::-1]
+    X_range = (np.max(X) - np.min(X))
+    X_min = np.min(X)
+    X_norm = (X - X_min) / X_range
+
+    y = dt_dp[mask][::-1]
+    y_range = np.max(y) - np.min(y)
+    y_min = np.min(y)
+    y_norm = (y - y_min) / y_range
+
+
+    delta = 1. / resolution
+    X_split = []
+    for i in range(1, resolution):
+        for j in range(i + 1, resolution):
+            X_split.append([i * delta, j * delta])
+
+    best_res = {}
+    min_fit_err = np.inf
+
+    for x1, x2 in X_split:
+
+        index1 = np.where(X_norm <= x1)[0]
+        index2 = np.where((X_norm >= x1) * (X_norm <= x2))[0]
+        index3 = np.where((X_norm >= x2))[0]
+        if len(index1) < 4 or len(index2) < 4 or len(index3) < 4:
+            continue
+
+        X1 = X_norm[index1]
+        y1 = y_norm[index1]
+        k1, b1 = my_linear_regreesion(X1, y1)
+        if k1 < 0:
+            continue
+
+        y1_pred = k1 * X1 + b1
+        errs1 = y1_pred - y1
+
+        start_x2 = np.max(X1)
+        start_y2 = k1 * start_x2 + b1
+        X2 = X_norm[index2]
+        y2 = y_norm[index2]
+        k2, b2 = my_linear_regreesion(X2, y2, start_x2, start_y2)
+        if k2 < 0:
+            continue
+
+        y2_pred = k2 * X2 + b2
+        errs2 = y2_pred - y2
+
+        start_x3 = np.max(X2)
+        start_y3 = k2 * start_x3 + b2
+        X3 = X_norm[index3]
+        y3 = y_norm[index3]
+        k3, b3 = my_linear_regreesion(X3, y3, start_x3, start_y3)
+        if k3 < 0:
+            continue
+
+        y3_pred = k3 * X3 + b3
+        errs3 = y3_pred - y3
+
+        if k3 > k1 or k3 > k2:
+            continue
+
+        errs = np.concatenate([errs1, errs2, errs3])
+        fit_err = abs(errs).mean()
+
+        if fit_err < min_fit_err:
+            min_fit_err = fit_err
+            best_res['errs'] = errs
+            best_res['k'] = [k1, k2, k3]
+            best_res['b'] = [b1, b2, b3]
+
+            best_res['X1'] = X1
+            best_res['y1_pred'] = y1_pred
+            best_res['X2'] = X2
+            best_res['y2_pred'] = y2_pred
+            best_res['X3'] = X3
+            best_res['y3_pred'] = y3_pred
+            # best_res['start_x2'] = start_x2
+            # best_res['start_y2'] = start_y2
+            best_res['start_x3'] = start_x3
+            # best_res['start_y3'] = start_y3
+
+            print(k1, k2, k3)
+
+    X1 = best_res['X1'] * X_range + X_min
+    X2 = best_res['X2'] * X_range + X_min
+    X3 = best_res['X3'] * X_range + X_min
+
+    y1_pred = best_res['y1_pred'] * y_range + y_min
+    y2_pred = best_res['y2_pred'] * y_range + y_min
+    y3_pred = best_res['y3_pred'] * y_range + y_min
+    #plt.plot(X1, y1_pred, )
+    #plt.plot(X2, y2_pred, )
+    #plt.plot(X3, y3_pred, )
+
+    X = X.tolist()
+    y = y.tolist()
+
+    y1_pred = y1_pred.tolist()
+    y2_pred = y2_pred.tolist()
+    y3_pred = y3_pred.tolist()
+
+    target_line = {
+        'label': 'Pressure',
+        'x': X,
+        'y': y,
+    }
+    fitted_line0 = {
+        'label': 'Fitted line (Stage 1)',
+        'x': X,
+        'y': y1_pred,
+    }
+
+    fitted_line1 = {
+        'label': 'Fitted line (Stage 2)',
+        'x': X,
+        'y': y2_pred,
+    }
+    fitted_line2 = {
+        'label': 'Fitted line (Stage 3)',
+        'x': X,
+        'y': y3_pred,
+    }
+
+    ps = float(best_res['start_x3'] * X_range + X_min)
+
+    cross_line0 = {
+        'label': 'Ps',
+        'x': [ps, ps],
+        'y': [min(y), max(y)],
+    }
+
+    lines = {
+        'target_line':  target_line,
+        'fitted_line0': fitted_line0,
+        'fitted_line1': fitted_line1,
+        'fitted_line2': fitted_line2,
+        'cross_line0':  cross_line0,
+    }
+
+    res = {
+        'value': ps,
         'lines': lines,
     }
 

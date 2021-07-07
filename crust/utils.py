@@ -1,7 +1,8 @@
 import datetime
 import xlrd, csv
 from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data
-
+import numpy as np
+from scipy import optimize
 
 def load_records(filename, ncol):
 
@@ -114,3 +115,28 @@ def save_downWell(filename, record_id):
 
     return status, message
 
+
+def piecewise_linear_two(x, x0, b, k1, k2):
+    condlist = [x < x0, x >= x0]
+    funclist = [lambda x: k1 * x + b, lambda x: k1 * x0 + b + k2 * (x - x0)]
+
+    return np.piecewise(x, condlist, funclist)
+
+def linear_func(x, k, b):
+    return k * x + b
+
+def exp_func(x, a, b, c):
+    return a * np.exp(-b * x) + c
+
+
+def my_linear_regreesion(X, y, start_x=None, start_y=None):
+    if start_x is None:
+        p, e = optimize.curve_fit(linear_func, X, y)
+        k = p[0]
+        b = p[1]
+    else:
+        X_shift = X - start_x
+        y_shift = y - start_y
+        k = X_shift.T.dot(y_shift) / X_shift.T.dot(X_shift)
+        b = start_y - k * start_x
+    return k, b

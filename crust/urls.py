@@ -17,10 +17,15 @@ urlpatterns = [
     #path('drill/<int:drill_id>/<str:data_type>/<int:record_id>', views.record, name='record'),
     path('drill/<int:drill_id>/<str:data_type>', views.record, name='record'),
 
-    #GET "/drill/{id}/upWell/ps?method=[method]&start={st}&end={ed}"
-    path('drill/<int:drill_id>/<str:data_type>/pb', views.calculate_pb, name='calculate_pb'),
-    #GET "/drill/{id}/upWell/pr?method=[method]&start={st}&end={ed}"
+
+    # GET "/drill/{id}/upWell/pb?&start={st}&end={ed}"
+    path('drill/<int:drill_id>/<str:data_type>/pb', views.calculate_pb, name='calculate_pr'),
+
+    #GET "/drill/{id}/upWell/pr?&start={st}&end={ed}"
     path('drill/<int:drill_id>/<str:data_type>/pr', views.calculate_pr, name='calculate_pr'),
+
+    #GET "/drill/{id}/upWell/pr?method=[method]&start={st}&end={ed}"
+    path('drill/<int:drill_id>/<str:data_type>/ps', views.calculate_ps, name='calculate_ps'),
 
 ]
 

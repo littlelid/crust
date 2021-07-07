@@ -17,9 +17,9 @@ import os, datetime
 from django.forms.models import model_to_dict
 
 from .utils import save_downWell, save_upWell
-from .calculate import estimate_pb, estimate_pr_tangent, estimate_pr_muskat
+from .calculate import estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp
 
-import json
+import json, time
 
 import logging
 
@@ -255,9 +255,72 @@ def record(request, drill_id, data_type):
 
     return JsonResponse(res)
 
-#GET "/drill/{id}/upWell/{id}/pb?start={st}&end={ed}"
+
+def get_pressure(drill_id, data_type):
+    now0 = time.time()
+    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
+    now1 = time.time()
+    if len(objs) == 0:
+        return None
+    else:
+        record_id = objs[0].id
+
+    pressure = []
+    if data_type == "upWell":
+        objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+
+        objs = list(objs)
+
+        pressure = [float(obj.upStress) for obj in objs]
+
+        print("pressure len", len(pressure))
+    else:
+        objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+        objs = list(objs)
+        pressure = [float(obj.downStress) for obj in objs]
+        print("pressure len", len(pressure))
+    #print(now4-now3, now3-now2, now2-now1, now1-now0)
+    if len(pressure) > 0:
+        return pressure
+    else:
+        return None
+
+
 @csrf_exempt
 def calculate_pb(request, drill_id, data_type):
+    now0 = time.time()
+    logger.info(request.method + ' ' + request.path_info)
+    print(request, drill_id, data_type)
+    res = {
+        'data': None,
+        'message': 'calculate_pb',
+        'status': 'success',
+    }
+    st_sel = int(request.GET['start'])
+    et_sel = int(request.GET['end'])
+
+    now1 = time.time()
+    pressure = get_pressure(drill_id, data_type)
+    if pressure is None:
+        res['message'] = 'no data'
+        res['status'] = 'fail'
+        return JsonResponse(res)
+
+    now2 = time.time()
+    est = estimate_pb(pressure, st_sel, et_sel)
+    now3 = time.time()
+    if est is None:
+        res['message'] = 'error in estimate_pb'
+        res['status'] = 'fail'
+        return JsonResponse(res)
+    res['data'] = est
+    logger.info(res['status'] + ' ' + res['message'])
+    now4 = time.time()
+    print(now4 - now3, now3 - now2, now2 - now1, now1 - now0)
+    return JsonResponse(res)
+
+@csrf_exempt
+def calculate_pr(request, drill_id, data_type):
     logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': None,
@@ -265,35 +328,23 @@ def calculate_pb(request, drill_id, data_type):
         'status': 'success',
     }
 
-    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
-    if len(objs) == 0:
+    st_sel = int(request.GET['start'])
+    et_sel = int(request.GET['end'])
+
+    pressure = get_pressure(drill_id, data_type)
+    if pressure is None:
         res['message'] = 'no data'
         res['status'] = 'fail'
         return JsonResponse(res)
-    else:
-        record_id = objs[0].id
 
-    if request.method == "GET":
-        st_sel = int(request.GET['start'])
-        et_sel = int(request.GET['end'])
+    est = estimate_pr(pressure, st_sel, et_sel)
+    if est is None:
+        res['message'] = 'error in estimate_pr'
+        res['status'] = 'fail'
 
-        pressure = []
-        if data_type == "upWell":
-            objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-            pressure =[float(obj.upStress) for obj in objs]
-            print("pressure len", len(pressure))
-        else:
-            objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-            pressure = [float(obj.downStress) for obj in objs]
-            print("pressure len", len(pressure))
+        return JsonResponse(res)
 
-        est = estimate_pb(pressure, st_sel, et_sel)
-        if est is None:
-            res['status'] = 'fail'
-            res['message'] = 'pr calculation'
-            return JsonResponse(res)
-
-        res['data'] = est
+    res['data'] = est
 
     logger.info(res['status'] + ' ' + res['message'])
     return JsonResponse(res)
@@ -301,48 +352,40 @@ def calculate_pb(request, drill_id, data_type):
 
 
 @csrf_exempt
-def calculate_pr(request, drill_id, data_type):
+def calculate_ps(request, drill_id, data_type):
     logger.info(request.method + ' ' + request.path_info)
     print(request, drill_id, data_type)
     res = {
         'data': None,
-        'message': 'good',
+        'message': 'calculate_ps',
         'status': 'success',
     }
 
-    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
-    if len(objs) == 0:
+    st_sel = int(request.GET['start'])
+    et_sel = int(request.GET['end'])
+    method = int(request.GET['method'])
+
+    pressure = get_pressure(drill_id, data_type)
+    if pressure is None:
         res['message'] = 'no data'
         res['status'] = 'fail'
         return JsonResponse(res)
-    else:
-        record_id = objs[0].id
 
-    if request.method == "GET":
-        st_sel = int(request.GET['start'])
-        et_sel = int(request.GET['end'])
+    if method == 1:
+        est = estimate_ps_tangent(pressure, st_sel, et_sel)
+    elif method == 2:
+        est = estimate_ps_muskat(pressure, st_sel, et_sel)
+    elif method == 3:
+        est = estimate_ps_dp_dt(pressure, st_sel, et_sel)
+    elif method == 4:
+        est = estimate_ps_dt_dp(pressure, st_sel, et_sel)
 
-        method = int(request.GET['method'])
+    if est is None:
+        res['status'] = 'fail'
+        res['message'] = 'error in estimate_ps'
+        return JsonResponse(res)
 
-        pressure = []
-        if data_type == "upWell":
-            objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-            pressure = [obj.upStress for obj in objs]
-        else:
-            objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-            pressure = [obj.downStress for obj in objs]
-
-        if method == 1:
-            est = estimate_pr_tangent(pressure, st_sel, et_sel)
-        elif method == 2:
-            est = estimate_pr_muskat(pressure, st_sel, et_sel)
-
-        if est is None:
-            res['status'] = 'fail'
-            res['message'] = 'pr calculation'
-            return JsonResponse(res)
-
-        res['data'] = est
+    res['data'] = est
 
     logger.info(res['status'] + ' ' + res['message'])
 
