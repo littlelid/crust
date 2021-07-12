@@ -17,7 +17,7 @@ import os, datetime
 from django.forms.models import model_to_dict
 
 from .utils import save_downWell, save_upWell
-from .calculate import estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp
+from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp
 
 import json, time
 
