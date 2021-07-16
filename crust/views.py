@@ -38,6 +38,35 @@ def index(request):
 
 
 @csrf_exempt
+def drill_count(request):
+    logger.info(request.method + ' ' + request.path_info)
+
+    res = {
+        'data': 0,
+        'message': '',
+        'status': 'success',
+    }
+
+    if request.method == 'GET':
+        try:
+            cnt = Drill.objects.all().count()
+
+            res['data'] = cnt
+
+
+            res['message'] = "drill cnt %s" % cnt
+            res['status'] = 'success'
+        except Exception as e:
+
+            res['message'] = "drill cnt " + str(e)
+            res['status'] = 'fail'
+
+    logger.info(res['status'] + ' ' + res['message'])
+
+    return JsonResponse(res)
+
+
+@csrf_exempt
 def drill(request, drill_id=None):
     logger.info(request.method + ' '+ request.path_info)
 
@@ -214,6 +243,7 @@ def record(request, drill_id, data_type):
             res['status'] = 'fail'
 
     elif request.method == "GET":
+
         objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
         if len(objs) == 0:
             res['message'] = 'no data'
@@ -223,8 +253,27 @@ def record(request, drill_id, data_type):
             print('record id is', record_id)
             try:
                 data = {}
+
+                pageCur = request.GET.get('pageCur')
+                pageSize = request.GET.get('pageSize')
+
+
+
+                if (pageCur is not None and pageSize is not None):
+                    pageCur = int(pageCur)
+                    pageSize = int(pageSize)
+                    print(pageSize, pageCur)
+
+
                 if data_type == 'upWell':
                     objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+                    print(Drill_Upwell_Data.objects.filter(record_id__exact=record_id).count())
+                    if (pageCur is not None and pageSize is not None):
+                        p = Paginator(objs, pageSize)
+                        if (pageCur <= p.num_pages and pageCur > 0):
+                            objs = p.page(pageCur).object_list
+                        else:
+                            objs = []
                     objs = [model_to_dict(obj) for obj in objs]
 
                     data['axisX'] = list(range(len(objs)))
@@ -237,6 +286,15 @@ def record(request, drill_id, data_type):
 
                 else:
                     objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+
+                    if (pageCur is not None and pageSize is not None):
+                        p = Paginator(objs, pageSize)
+                        if (pageCur <= p.num_pages and pageCur > 0):
+                            objs = p.page(pageCur).object_list
+                        else:
+                            objs = []
+
+
                     objs = [model_to_dict(obj) for obj in objs]
 
                     data['axisX'] = list(range(len(objs)))
@@ -246,6 +304,43 @@ def record(request, drill_id, data_type):
 
                 res['data'] = data
                 res['message'] = 'get'
+
+            except Exception as e:
+                res['message'] = str(e)
+                res['status'] = 'fail'
+
+    logger.info(res['status'] + ' ' + res['message'])
+
+    return JsonResponse(res)
+
+@csrf_exempt
+def record_count(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
+    res = {
+        'data': 0,
+        'message': 'record_count',
+        'status':  'success',
+    }
+
+    if request.method == "GET":
+        objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
+        if len(objs) == 0:
+            res['data'] = 0
+            res['message'] = 'no data'
+            res['status'] = 'fail'
+        else:
+            record_id = objs[0].id
+            print('record id is', record_id, data_type)
+            try:
+
+                if data_type == 'upWell':
+                    cnt = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).count()
+
+                else:
+                    cnt = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).count()
+
+                res['data'] = cnt
+                res['message'] = '%s pressure cnt: %s' % (data_type, cnt)
 
             except Exception as e:
                 res['message'] = str(e)
