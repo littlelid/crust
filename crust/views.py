@@ -17,7 +17,7 @@ import os, datetime
 from django.forms.models import model_to_dict
 
 from .utils import save_downWell, save_upWell
-from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp
+from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp, estimate_ps_dp_dt_robust, estimate_ps_dt_dp_robust
 
 import json, time
 
@@ -153,8 +153,13 @@ def drill(request, drill_id=None):
         try:
             obj = Drill.objects.get(pk=drill_id)
 
-            params = MultiPartParser(request.META, request, request.upload_handlers).parse()[0]
-            params = params.dict()
+            #params = MultiPartParser(request.META, request, request.upload_handlers).parse()[0]
+            #params = params.dict()
+
+            params = QueryDict(request.body, encoding=request.encoding)
+
+            logger.info(params)
+
 
             print(params)
             for k, v in params.items():
@@ -471,9 +476,9 @@ def calculate_ps(request, drill_id, data_type):
     elif method == 2:
         est = estimate_ps_muskat(pressure, st_sel, et_sel)
     elif method == 3:
-        est = estimate_ps_dp_dt(pressure, st_sel, et_sel)
+        est = estimate_ps_dp_dt_robust(pressure, st_sel, et_sel)
     elif method == 4:
-        est = estimate_ps_dt_dp(pressure, st_sel, et_sel)
+        est = estimate_ps_dt_dp_robust(pressure, st_sel, et_sel)
 
     if est is None:
         res['status'] = 'fail'
