@@ -35,6 +35,28 @@ class Record(models.Model):
     drill = models.ForeignKey('Drill', on_delete=models.CASCADE)
 
 
+class Calculation(models.Model):
+
+    # 记录下区间起点终点，结果，计算时间、所在drill
+
+    stress = models.CharField(max_length=20)
+
+    stress_type = models.CharField(max_length=20)  # pb, pr, ps
+
+    method = models.CharField(max_length=20)  # 1,2,3,4
+
+
+    time = models.DateTimeField(auto_now=False, auto_now_add=False)  # 采集时间
+
+    start = models.CharField(max_length=20)
+    end = models.CharField(max_length=20)
+
+    record = models.ForeignKey('Record', on_delete=models.CASCADE)
+
+
+
+
+
 class Drill_Upwell_Data(models.Model):
 
     index   = models.IntegerField()
@@ -45,7 +67,6 @@ class Drill_Upwell_Data(models.Model):
     inject = models.CharField(max_length=50, default='')      # 注入量（L/min）
     back = models.CharField(max_length=50, default='')      # 回流量（L/min)
     record = models.ForeignKey('Record', on_delete=models.CASCADE)
-
 
 
     def __str__(self):

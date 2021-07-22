@@ -14,6 +14,9 @@ urlpatterns = [
     path('drill/<int:drill_id>/<str:data_type>/csv', views.fileUpload, name='fileupload'), #POST "/drill/{id}/upWell/csv" csv/xlsx文件
 
 
+    #/crust/drill/9/upWell/save?stress_type=pb&method=1
+    path('drill/<int:drill_id>/<str:data_type>/save', views.calculation, name='calculation'),
+
     #path('drill/<int:drill_id>/<str:data_type>/<int:record_id>', views.record, name='record'),
     path('drill/<int:drill_id>/<str:data_type>', views.record, name='record'),
     path('drill/<int:drill_id>/<str:data_type>/', views.record, name='record'),

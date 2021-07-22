@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data, Record
+from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data, Record, Calculation
 
 from django.core import serializers
 from django.core.paginator import Paginator
@@ -117,7 +117,7 @@ def drill(request, drill_id=None):
         #serialized_obj = json.dumps(objs)
         #return HttpResponse(serialized_obj, content_type='application/json')
 
-    if request.method == 'POST':
+    elif request.method == 'POST':
 
         try:
             params = request.POST.dict()
@@ -184,6 +184,85 @@ def drill(request, drill_id=None):
 
 
 @csrf_exempt
+def calculation(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
+
+    res = {
+        'data': None,
+        'message': '',
+        'status': 'success',
+    }
+
+
+    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
+    if len(objs) == 0:
+        res['message'] = 'no record'
+        res['status'] = 'fail'
+        return JsonResponse(res)
+
+    record_id = objs[0].id
+    print('record id is', record_id)
+
+    if request.method == 'GET':
+        try:
+            stress_type = request.GET.get('stress_type')
+            method = request.GET.get('method')
+
+            objs = Calculation.objects.filter(record_id__exact=record_id, stress_type=stress_type, method=method).order_by('-time')
+
+            if len(objs) >= 1:
+                objs = objs[0:1]
+
+
+            serialized_obj = serializers.serialize('json', objs)
+            objs = json.loads(serialized_obj)
+            #objs_cnt =
+
+            for obj in objs:
+                obj['fields']['id'] = obj['pk']
+
+            res['message'] = "get calculation"
+            res['data'] = objs
+        except Exception as e:
+            print(str(e))
+            logger.info(str(e))
+            res['message'] = str(e)
+            res['status'] = 'fail'
+
+    elif request.method == 'POST':
+        #stress = models.CharField(max_length=20)
+        #stress_type = models.CharField(max_length=20)  # pb, pr, ps
+        #method = models.CharField(max_length=20)  # 1,2,3,4
+        #time = models.TimeField(auto_now=False, auto_now_add=False)  # 采集时间
+        #start =
+        #end =
+        #record = models.ForeignKey('Record', on_delete=models.CASCADE)
+
+        try:
+            params = request.POST.dict()
+
+
+            logger.info(params)
+            print(params)
+
+            params['time'] = datetime.datetime.now()
+            params['record_id'] = record_id
+
+            obj = Calculation(**params)
+            obj.save()
+
+        except Exception as e:
+            logger.info(str(e))
+            res['message'] = str(e)
+            res['status'] = 'fail'
+
+        res['message'] = "post one drill"
+        res['status'] = 'success'
+
+    return JsonResponse(res)
+
+
+@csrf_exempt
 def fileUpload(request, drill_id, data_type):
     logger.info(request.method + ' ' + request.path_info)
     #print(drill_id, data_type)
@@ -228,6 +307,7 @@ def fileUpload(request, drill_id, data_type):
 
 @csrf_exempt
 def record(request, drill_id, data_type):
+    #tt0 = time.time()
     logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': None,
@@ -272,14 +352,25 @@ def record(request, drill_id, data_type):
 
                 if data_type == 'upWell':
                     objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+                    #objs = Drill_Upwell_Data.objects.all()
+                    #print(Drill_Upwell_Data.objects.all().count())
+                    t0 = time.time()
                     print(Drill_Upwell_Data.objects.filter(record_id__exact=record_id).count())
+
                     if (pageCur is not None and pageSize is not None):
                         p = Paginator(objs, pageSize)
                         if (pageCur <= p.num_pages and pageCur > 0):
                             objs = p.page(pageCur).object_list
                         else:
                             objs = []
+                    t1 = time.time()
+                    objs = list(objs)
+                    t2 = time.time()
+
                     objs = [model_to_dict(obj) for obj in objs]
+                    t3 = time.time()
+
+                    print("time: ", t1 - t0, t2 - t1, t3 - t2)
 
                     data['axisX'] = list(range(len(objs)))
                     fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
@@ -292,6 +383,7 @@ def record(request, drill_id, data_type):
                 else:
                     objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
 
+                    print(Drill_Downwell_Data.objects.filter(record_id__exact=record_id).count())
                     if (pageCur is not None and pageSize is not None):
                         p = Paginator(objs, pageSize)
                         if (pageCur <= p.num_pages and pageCur > 0):
@@ -299,8 +391,14 @@ def record(request, drill_id, data_type):
                         else:
                             objs = []
 
+                    t1 = time.time()
+                    objs = list(objs)
+                    t2 = time.time()
 
                     objs = [model_to_dict(obj) for obj in objs]
+                    t3 = time.time()
+
+                    #objs = [model_to_dict(obj) for obj in objs]
 
                     data['axisX'] = list(range(len(objs)))
                     fields = ['downStress', 'measureStress', 'downFlow', 'downTemperature']
@@ -315,7 +413,10 @@ def record(request, drill_id, data_type):
                 res['status'] = 'fail'
 
     logger.info(res['status'] + ' ' + res['message'])
-
+    #t1 = time.time()
+    #ret = JsonResponse(res)
+    #print(time.time() - tt0)
+    #return ret
     return JsonResponse(res)
 
 @csrf_exempt

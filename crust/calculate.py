@@ -795,7 +795,7 @@ def estimate_ps_dt_dp(pressure, st_sel, et_sel, resolution=40):
     return res
 
 
-def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, resolution=40):
+def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, resolution=20):
     try:
         pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
         pressure_hat_sel = pressure_hat[st_sel: et_sel]
