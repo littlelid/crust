@@ -216,7 +216,7 @@ def calculation(request, drill_id, data_type):
 
             serialized_obj = serializers.serialize('json', objs)
             objs = json.loads(serialized_obj)
-            #objs_cnt =
+
 
             for obj in objs:
                 obj['fields']['id'] = obj['pk']
@@ -251,13 +251,15 @@ def calculation(request, drill_id, data_type):
             obj = Calculation(**params)
             obj.save()
 
+            res['message'] = "post one drill"
+            res['status'] = 'success'
+
         except Exception as e:
             logger.info(str(e))
             res['message'] = str(e)
             res['status'] = 'fail'
 
-        res['message'] = "post one drill"
-        res['status'] = 'success'
+
 
     return JsonResponse(res)
 

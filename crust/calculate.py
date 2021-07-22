@@ -54,7 +54,8 @@ def estimate_pr(pressure, st_sel, et_sel):
 
         #predict
         st_pred = st_fit
-        length_pred = 100
+        #length_pred = 100
+        length_pred = int(et_sel - st_sel)
 
         X_pred = np.arange(st_pred, st_pred + length_pred)
         y_pred = linear_func(X_pred, *p)
@@ -185,7 +186,7 @@ def estimate_ps_tangent(pressure, st_sel, et_sel):
 
         # predict
         st_pred = st_fit
-        length_pred = 100
+        length_pred = int(et_sel - st_sel)
 
         X_pred = np.arange(st_pred, st_pred + length_pred)
         y_pred = linear_func(X_pred, *p)
