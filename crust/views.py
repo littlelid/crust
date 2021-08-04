@@ -138,9 +138,18 @@ def drill(request, drill_id=None):
             params = request.POST.dict()
             #print(params)
             params.pop('id', None)
-            obj = Drill(**params)
 
-            obj.save()
+            drill = Drill(**params)
+
+            drill.save()
+
+            # add deep
+            #now = datetime.datetime.now()
+            #for data_type in ['upWell', 'downWell']:
+            #    record = Record(data_type=data_type, drill_id=drill.id, time=now, deep=params['max_deep'], samplingFreq=1)
+            #    record.save()
+
+            #    logger.info('add new deep %s for Drill %s' % (params['max_deep'], drill.id))
 
             res['message'] = "post one drill"
             res['status'] = 'success'
@@ -296,7 +305,6 @@ def fileUpload(request, drill_id, deep, data_type):
                 f.write(chunk)
             f.close()
 
-
             objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type, )
             if len(objs) == 0:
                 res['message'] = 'deep %s not exists for Drill %s' % (deep, drill_id)
@@ -366,20 +374,33 @@ def record(request, drill_id, deep=None, data_type=None):
 
 
             deep = params['deep']
-            samplingFreq =  params['samplingFreq']
+            samplingFreq = params.get('samplingFreq')
             print(deep, samplingFreq)
 
-            cnt = Record.objects.filter(drill_id=drill_id, deep=deep).count()
-            if cnt > 0:
-                res['message'] = "Error: deep %s already exists for Drill %s" % (deep, drill_id)  #"Error: " + "deep " + deep + ' '
-                res['status'] = 'fail'
+            objs = Record.objects.filter(drill_id=drill_id, deep=deep)
+            if len(objs) > 0:
+                if(samplingFreq is None or samplingFreq == ''):
+                    res['message'] = "Error:  deep %s already exists for Drill %s and samplingFreq is null (To update samplingFreq, please provide samplingFreq)" % (deep, drill_id)  # "Error: " + "deep " + deep + ' '
+                    res['status'] = 'fail'
+                else:
+                    assert len(objs) == 2
+                    for obj in objs:
+                        obj.samplingFreq = samplingFreq
+                        obj.save()
+
+                    res['message'] = "update samplingFreq of deep %s for Drill %s (now = %s)" % (
+                    deep, drill_id, samplingFreq)  # "Error: " + "deep " + deep + ' '
+                    res['status'] = 'success'
+
             else:
                 now = datetime.datetime.now()
                 for data_type in ['upWell', 'downWell']:
-                    record = Record(data_type=data_type, drill_id=drill_id, time=now, deep=deep, samplingFreq=samplingFreq)
+                    samplingFreq2 = 1 if (samplingFreq is None or samplingFreq == '') else samplingFreq
+                    print(samplingFreq2)
+                    record = Record(data_type=data_type, drill_id=drill_id, time=now, deep=deep, samplingFreq=samplingFreq2)
                     record.save()
 
-                    logger.info( 'add new deep %s for Drill %s' % (deep, drill_id))
+                    logger.info( 'add new deep %s for Drill %s (samplingFreq = %s)' % (deep, drill_id, samplingFreq2))
 
                 res['message'] = 'add deep %s for Drill %s ' % (deep, drill_id)
         except Exception as e:

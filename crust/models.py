@@ -2,7 +2,12 @@ from django.db import models
 import datetime
 # Create your models here.
 
+import logging
 
+# 实例化logging对象,并以当前文件的名字作为logger实例的名字
+logger = logging.getLogger(__name__)
+# 生成一个名字叫做 collect 的日志实例
+logger_c = logging.getLogger('file')
 
 
 class Drill(models.Model):
@@ -31,6 +36,17 @@ class Drill(models.Model):
     def __str__(self):
         """String for representing the Model object."""
         return self.name
+
+    def save(self, *args, **kwargs):
+        super(Drill, self).save(*args, **kwargs)
+        
+        now = datetime.datetime.now()
+        for data_type in ['upWell', 'downWell']:
+
+            record = Record(data_type=data_type, drill_id=self.id, time=now, deep=self.max_deep, samplingFreq=1)
+            record.save()
+
+            logger.info('add new deep %s for Drill %s' % (self.max_deep, self.id))
 
 
 
