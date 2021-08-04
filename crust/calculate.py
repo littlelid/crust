@@ -35,10 +35,12 @@ def estimate_pb(pressure, st_sel, et_sel):
 
     return res
 
-def estimate_pr(pressure, st_sel, et_sel):
+def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
 
     try:
-        pressure_hat = savgol_filter(pressure, 7, 1) # smooth
+        if samplingFreq % 2 == 0:
+            samplingFreq += 1
+        pressure_hat = savgol_filter(pressure, samplingFreq, 1) # smooth
 
         st_fit = st_sel
         et_fit = st_sel + max(5, int((et_sel - st_sel) * 0.4))
@@ -65,7 +67,7 @@ def estimate_pr(pressure, st_sel, et_sel):
 
         mask = (errs >= 3 * err_mean) * (np.arange(st_pred, st_pred + length_pred) >= mid_fit)
 
-        print(np.where(mask == True)[0])
+        #print(np.where(mask == True)[0])
 
         indexs = np.where(mask == True)[0]
         if len(indexs) == 0:
@@ -162,10 +164,12 @@ def estimate_pr(pressure, st_sel, et_sel):
     #print(res)
     return res
 
-def estimate_ps_tangent(pressure, st_sel, et_sel):
+def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
     try:
         print(len(pressure))
-        pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+        if samplingFreq % 2 == 0:
+            samplingFreq += 1
+        pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
 
         st_fit = st_sel
         # length = min(30, int((et_sel-st_sel) * 0.05))
@@ -175,10 +179,10 @@ def estimate_ps_tangent(pressure, st_sel, et_sel):
         et_fit = st_sel + length
         mid_fit = int((et_fit - st_fit) / 2)
 
-        print(st_fit, et_fit)
+        #print(st_fit, et_fit)
         X = np.arange(st_fit, et_fit)
         y = pressure_hat[st_fit: et_fit]
-        print(len(X), len(y))
+        #(len(X), len(y))
         p, e = optimize.curve_fit(linear_func, X, y)
         y_fit = linear_func(X, *p)
 
@@ -196,7 +200,7 @@ def estimate_ps_tangent(pressure, st_sel, et_sel):
 
         mask = (errs >= 3 * err_mean) * (np.arange(st_pred, st_pred + length_pred) >= mid_fit)
 
-        print(np.where(mask == True)[0])
+        #print(np.where(mask == True)[0])
 
         indexs = np.where(mask == True)[0]
         if len(indexs) == 0:
@@ -206,6 +210,9 @@ def estimate_ps_tangent(pressure, st_sel, et_sel):
         index = int(index)
 
         ps = pressure_hat[index]
+        ps_inx = np.argmin(abs(pressure_hat-ps))
+        ps = pressure_hat[ps_inx]
+
 
         X_pred = X_pred.tolist()
         y_target = y_target.tolist()
@@ -277,10 +284,12 @@ def estimate_ps_tangent(pressure, st_sel, et_sel):
 
     return res
 
-def estimate_ps_muskat(pressure, st_sel, et_sel):
+def estimate_ps_muskat(pressure, st_sel, et_sel, samplingFreq=7):
 
     try:
-        pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+        if samplingFreq % 2 == 0:
+            samplingFreq += 1
+        pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
 
 
         #fitting
@@ -306,7 +315,7 @@ def estimate_ps_muskat(pressure, st_sel, et_sel):
                 popt, pcov = optimize.curve_fit(exp_func, X_search, y_search)
                 # print(popt)
                 perr = np.sum(np.sqrt(np.diag(pcov)))
-                print(st_search, et_search, perr)
+                #print(st_search, et_search, perr)
                 if (perr < min_fit_err):
                     min_fit_err = perr
                     best_popt = popt
@@ -323,6 +332,9 @@ def estimate_ps_muskat(pressure, st_sel, et_sel):
         y_pred = exp_func(X_pred - best_st, *best_popt)
 
         ps = y_pred[0]
+        ps_inx = np.argmin(abs(pressure_hat-ps))
+        ps = pressure_hat[ps_inx]
+
 
         X_pred = X_pred.tolist()
         y_target = y_target.tolist()
@@ -404,8 +416,12 @@ def estimate_ps_muskat(pressure, st_sel, et_sel):
     return res
 
 
-def estimate_ps_dp_dt(pressure, st_sel, et_sel):
-    pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+def estimate_ps_dp_dt(pressure, st_sel, et_sel, samplingFreq=7):
+
+    if samplingFreq % 2 == 0:
+        samplingFreq += 1
+    pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+
     pressure_hat_sel = pressure_hat[st_sel: et_sel]
     dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
     dp_dt = -abs(dp_dt)
@@ -428,6 +444,9 @@ def estimate_ps_dp_dt(pressure, st_sel, et_sel):
     x0 = popt[0]
 
     ps = float(x0 * X_range + X_min)
+    ps_inx = np.argmin(abs(pressure_hat - ps))
+    ps = pressure_hat[ps_inx]
+
 
     X = X.tolist()
     y_target = y_target.tolist()
@@ -474,9 +493,12 @@ def estimate_ps_dp_dt(pressure, st_sel, et_sel):
 
 
 
-def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, resolution = 50):
+def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolution = 50):
     try:
-        pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+        if samplingFreq % 2 == 0:
+            samplingFreq += 1
+
+        pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
         pressure_hat_sel = pressure_hat[st_sel: et_sel]
         dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
         dp_dt = -abs(dp_dt)
@@ -585,6 +607,9 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, resolution = 50):
 
 
         ps = x_intersect * X_range + X_min
+        ps_inx = np.argmin(abs(pressure_hat-ps))
+        ps = pressure_hat[ps_inx]
+
         #plt.plot([X_r, X_r], [np.max(y), np.min(y)], label="Pressure=" + str(round(X_r, 4)))
         #plt.legend()
         lines = [
@@ -638,8 +663,10 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, resolution = 50):
 
 
 
-def estimate_ps_dt_dp(pressure, st_sel, et_sel, resolution=40):
-    pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+def estimate_ps_dt_dp(pressure, st_sel, et_sel, samplingFreq=7, resolution=40):
+    if samplingFreq % 2 == 0:
+        samplingFreq += 1
+    pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
     pressure_hat_sel = pressure_hat[st_sel: et_sel]
     dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
     dp_dt = -abs(dp_dt)
@@ -773,6 +800,8 @@ def estimate_ps_dt_dp(pressure, st_sel, et_sel, resolution=40):
     }
 
     ps = float(best_res['start_x3'] * X_range + X_min)
+    ps_inx = np.argmin(abs(pressure_hat - ps))
+    ps = pressure_hat[ps_inx]
 
     cross_line0 = {
         'label': 'Ps',
@@ -796,8 +825,10 @@ def estimate_ps_dt_dp(pressure, st_sel, et_sel, resolution=40):
     return res
 
 
-def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, resolution=20):
+def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=7, resolution=20):
     try:
+        if samplingFreq % 2 == 0:
+            samplingFreq += 1
         pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
         pressure_hat_sel = pressure_hat[st_sel: et_sel]
         dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
@@ -817,8 +848,8 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, resolution=20):
         y_min = np.min(y)
         y_norm = (y - y_min) / y_range
 
-        print(X_range, X_min, y_range, y_min, )
-        print(X_norm, y_norm)
+        #print(X_range, X_min, y_range, y_min, )
+        #print(X_norm, y_norm)
 
         regressor1 = HuberRegressor(warm_start=True)
         regressor2 = HuberRegressor(warm_start=True)
@@ -873,7 +904,7 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, resolution=20):
             fit_err = abs(errs).mean()
 
             if fit_err < min_fit_err:
-                print(x1_split, x2_split)
+                #print(x1_split, x2_split)
                 min_fit_err = fit_err
 
                 best_res['errs'] = errs
@@ -925,6 +956,9 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, resolution=20):
         #plt.plot(X3_plot, y3_plot, label="the first stage")
 
         ps = x_intersect2 * X_range + X_min
+        ps_inx = np.argmin(abs(pressure_hat-ps))
+        ps = pressure_hat[ps_inx]
+
         #plt.plot([X_p, X_p], [np.max(y), np.min(y)], label="Pressure=" + str(round(X_p, 4)))
         print(x_intersect1, x_intersect2)
         lines = [

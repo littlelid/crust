@@ -4,16 +4,17 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data, Record, Calculation
-
+from scipy.signal import savgol_filter
 from django.core import serializers
 from django.core.paginator import Paginator
 from django.http import QueryDict
 from django.http import HttpResponse
+from scipy.ndimage.filters import uniform_filter1d
 
 from django.http.multipartparser import MultiPartParser
 
 import os, datetime
-
+import numpy as np
 from django.forms.models import model_to_dict
 
 from .utils import save_downWell, save_upWell
@@ -112,6 +113,20 @@ def drill(request, drill_id=None):
         for obj in objs:
             obj['fields']['id'] = obj['pk']
 
+            records = Record.objects.filter(drill_id=obj['pk'])
+
+            deeps = []
+            samplingFreqs = []
+            for  record in records: #每个upWell 和 downWell都有一个record
+                if record.deep not in deeps:
+                    deeps.append(record.deep)
+                    samplingFreqs.append(record.samplingFreq)
+
+            #samplingFreqs = [ record.samplingFreq for record in records]
+
+            obj['fields']['deep'] = deeps
+            obj['fields']['samplingFreq'] = samplingFreqs
+
         res['data'] = objs
 
         #serialized_obj = json.dumps(objs)
@@ -144,7 +159,6 @@ def drill(request, drill_id=None):
 
         res['message'] = "delete %s drill" % num_objs
         res['status'] = 'success' if num_objs == 1 else 'fail'
-
 
 
 
@@ -184,7 +198,7 @@ def drill(request, drill_id=None):
 
 
 @csrf_exempt
-def calculation(request, drill_id, data_type):
+def calculation(request, drill_id, deep, data_type):
     logger.info(request.method + ' ' + request.path_info)
 
     res = {
@@ -193,12 +207,13 @@ def calculation(request, drill_id, data_type):
         'status': 'success',
     }
 
-
-    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
+    objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type) #.order_by('-time')
     if len(objs) == 0:
         res['message'] = 'no record'
         res['status'] = 'fail'
         return JsonResponse(res)
+
+    assert len(objs) == 1
 
     record_id = objs[0].id
     print('record id is', record_id)
@@ -213,7 +228,6 @@ def calculation(request, drill_id, data_type):
             if len(objs) >= 1:
                 objs = objs[0:1]
 
-
             serialized_obj = serializers.serialize('json', objs)
             objs = json.loads(serialized_obj)
 
@@ -221,26 +235,21 @@ def calculation(request, drill_id, data_type):
             for obj in objs:
                 obj['fields']['id'] = obj['pk']
 
-            res['message'] = "get calculation"
             res['data'] = objs
+            res['message'] = "get %s calculation" % len(objs)
+            res['status'] = 'success' if len(objs) > 0 else 'fail'
+
+            logger.info(res['message'])
+
         except Exception as e:
-            print(str(e))
             logger.info(str(e))
             res['message'] = str(e)
             res['status'] = 'fail'
 
     elif request.method == 'POST':
-        #stress = models.CharField(max_length=20)
-        #stress_type = models.CharField(max_length=20)  # pb, pr, ps
-        #method = models.CharField(max_length=20)  # 1,2,3,4
-        #time = models.TimeField(auto_now=False, auto_now_add=False)  # 采集时间
-        #start =
-        #end =
-        #record = models.ForeignKey('Record', on_delete=models.CASCADE)
 
         try:
             params = request.POST.dict()
-
 
             logger.info(params)
             print(params)
@@ -251,9 +260,10 @@ def calculation(request, drill_id, data_type):
             obj = Calculation(**params)
             obj.save()
 
-            res['message'] = "post one drill"
+            res['message'] = "post one calculation"
             res['status'] = 'success'
 
+            logger.info(res['message'])
         except Exception as e:
             logger.info(str(e))
             res['message'] = str(e)
@@ -265,7 +275,7 @@ def calculation(request, drill_id, data_type):
 
 
 @csrf_exempt
-def fileUpload(request, drill_id, data_type):
+def fileUpload(request, drill_id, deep, data_type):
     logger.info(request.method + ' ' + request.path_info)
     #print(drill_id, data_type)
     res = {
@@ -275,7 +285,7 @@ def fileUpload(request, drill_id, data_type):
     }
 
     try:
-        drill = Drill.objects.filter(pk=drill_id)
+        #drill = Drill.objects.filter(pk=drill_id)
 
         if request.method == "POST":  # 请求方法为POST时，进行处理
             myFile = request.FILES.get("file", None)  # 获取上传的文件，如果没有文件，则默认为None
@@ -287,8 +297,17 @@ def fileUpload(request, drill_id, data_type):
             f.close()
 
 
+            objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type, )
+            if len(objs) == 0:
+                res['message'] = 'deep %s not exists for Drill %s' % (deep, drill_id)
+                res['status'] = 'fail'
+                return JsonResponse(res)
+
+            assert len(objs) == 1
+
+            record = objs[0]
             now = datetime.datetime.now()
-            record = Record(data_type=data_type, drill_id=drill_id, time=now)
+            record.time = now
             record.save()
 
             if data_type == "upWell":
@@ -308,7 +327,7 @@ def fileUpload(request, drill_id, data_type):
 
 
 @csrf_exempt
-def record(request, drill_id, data_type):
+def record(request, drill_id, deep=None, data_type=None):
     #tt0 = time.time()
     logger.info(request.method + ' ' + request.path_info)
     res = {
@@ -320,43 +339,88 @@ def record(request, drill_id, data_type):
     if request.method == "DELETE":
         try:
 
-            objs = Record.objects.filter(drill_id=drill_id)
+            if deep is None:
+
+                objs = Record.objects.filter(drill_id=drill_id)
+                res['message'] = "delete all deeps of Drill %s" % drill_id
+            else:
+                objs = Record.objects.filter(drill_id=drill_id, deep=deep)
+                res['message'] = "delete deep %s for Drill %s" % (deep, drill_id)
+
             num_objs = len(objs)
-            objs.delete()
-            res['message'] = 'delete ' + str(num_objs) + ' obj'
+
+            if(num_objs == 0):
+                res['message'] += ": no record"
+                res['status'] = 'fail'
+            else:
+                objs.delete()
+                res['status'] = 'success'
 
         except Exception as e:
-            res['message'] = str(e)
+            res['message'] = "Error: " + str(e)
+            res['status'] = 'fail'
+
+    elif request.method == "POST":
+        try:
+            params = request.POST.dict()
+
+
+            deep = params['deep']
+            samplingFreq =  params['samplingFreq']
+            print(deep, samplingFreq)
+
+            cnt = Record.objects.filter(drill_id=drill_id, deep=deep).count()
+            if cnt > 0:
+                res['message'] = "Error: deep %s already exists for Drill %s" % (deep, drill_id)  #"Error: " + "deep " + deep + ' '
+                res['status'] = 'fail'
+            else:
+                now = datetime.datetime.now()
+                for data_type in ['upWell', 'downWell']:
+                    record = Record(data_type=data_type, drill_id=drill_id, time=now, deep=deep, samplingFreq=samplingFreq)
+                    record.save()
+
+                    logger.info( 'add new deep %s for Drill %s' % (deep, drill_id))
+
+                res['message'] = 'add deep %s for Drill %s ' % (deep, drill_id)
+        except Exception as e:
+            res['message'] = "Error: " + str(e)
             res['status'] = 'fail'
 
     elif request.method == "GET":
+        try:
 
-        objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
-        if len(objs) == 0:
-            res['message'] = 'no data'
-            res['status'] = 'fail'
-        else:
-            record_id = objs[0].id
-            print('record id is', record_id)
-            try:
+            assert (deep is not None) and (data_type is not None) and (data_type is not None)
+
+            objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type)
+
+            if len(objs) == 0:
+                res['message'] = "Error: " + 'no data'
+                res['status'] = 'fail'
+            else:
+
+                print("1111")
+                record_id = objs[0].id
+                samplingFreq = int(objs[0].samplingFreq)
+                if samplingFreq % 2 == 0:
+                    samplingFreq += 1
+
+                print('record id is', record_id)
+
                 data = {}
 
                 pageCur = request.GET.get('pageCur')
                 pageSize = request.GET.get('pageSize')
-
-
 
                 if (pageCur is not None and pageSize is not None):
                     pageCur = int(pageCur)
                     pageSize = int(pageSize)
                     print(pageSize, pageCur)
 
-
                 if data_type == 'upWell':
                     objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
                     #objs = Drill_Upwell_Data.objects.all()
                     #print(Drill_Upwell_Data.objects.all().count())
-                    t0 = time.time()
+
                     print(Drill_Upwell_Data.objects.filter(record_id__exact=record_id).count())
 
                     if (pageCur is not None and pageSize is not None):
@@ -365,27 +429,36 @@ def record(request, drill_id, data_type):
                             objs = p.page(pageCur).object_list
                         else:
                             objs = []
-                    t1 = time.time()
+
                     objs = list(objs)
-                    t2 = time.time()
-
                     objs = [model_to_dict(obj) for obj in objs]
-                    t3 = time.time()
-
-                    print("time: ", t1 - t0, t2 - t1, t3 - t2)
 
                     data['axisX'] = list(range(len(objs)))
                     fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
+                    print("xxx")
                     for field in fields:
-                        data[field] = [ obj[field] for obj in objs]
+
+                        raw = [obj[field] for obj in objs]
+                        raw = np.array(raw, dtype=np.float16).tolist()
+
+
+                        if len(raw) <= samplingFreq:
+                            raw_smooth = []
+                        else:
+                            raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
+
+                        #raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
+
+                        data[field] = raw  # [ obj[field] for obj in objs]
+                        data[field + '_smooth'] = raw_smooth
 
                     #print(data)
-                    print(data.keys())
+                    #print(data.keys())
 
                 else:
                     objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
 
-                    print(Drill_Downwell_Data.objects.filter(record_id__exact=record_id).count())
+                    print("Number of records : %s" % objs.count())
                     if (pageCur is not None and pageSize is not None):
                         p = Paginator(objs, pageSize)
                         if (pageCur <= p.num_pages and pageCur > 0):
@@ -393,36 +466,47 @@ def record(request, drill_id, data_type):
                         else:
                             objs = []
 
-                    t1 = time.time()
+
                     objs = list(objs)
-                    t2 = time.time()
+
 
                     objs = [model_to_dict(obj) for obj in objs]
-                    t3 = time.time()
 
                     #objs = [model_to_dict(obj) for obj in objs]
 
                     data['axisX'] = list(range(len(objs)))
                     fields = ['downStress', 'measureStress', 'downFlow', 'downTemperature']
+                    #for field in fields:
+                    #    data[field] = [obj[field] for obj in objs]
+
                     for field in fields:
-                        data[field] = [obj[field] for obj in objs]
+
+                        raw = [obj[field] for obj in objs]
+
+                        raw = np.array(raw, dtype=np.float16).tolist()
+
+                        if len(raw) <= samplingFreq:
+                            raw_smooth = []
+                        else:
+                            raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
+                        #raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
+
+                        data[field] = raw  # [ obj[field] for obj in objs]
+                        data[field + '_smooth'] = raw_smooth
 
                 res['data'] = data
                 res['message'] = 'get'
 
-            except Exception as e:
-                res['message'] = str(e)
+        except Exception as e:
+                res['message'] = "Error: " + str(e)
                 res['status'] = 'fail'
 
     logger.info(res['status'] + ' ' + res['message'])
-    #t1 = time.time()
-    #ret = JsonResponse(res)
-    #print(time.time() - tt0)
-    #return ret
+
     return JsonResponse(res)
 
 @csrf_exempt
-def record_count(request, drill_id, data_type):
+def record_count(request, drill_id, deep, data_type):
     logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': 0,
@@ -431,14 +515,14 @@ def record_count(request, drill_id, data_type):
     }
 
     if request.method == "GET":
-        objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
+        objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type) #.order_by('-time')
         if len(objs) == 0:
             res['data'] = 0
             res['message'] = 'no data'
             res['status'] = 'fail'
         else:
             record_id = objs[0].id
-            print('record id is', record_id, data_type)
+            print('record id is', record_id, deep, data_type)
             try:
 
                 if data_type == 'upWell':
@@ -458,17 +542,64 @@ def record_count(request, drill_id, data_type):
 
     return JsonResponse(res)
 
+@csrf_exempt
+def delete_pressure(request, drill_id, deep, data_type):
 
-def get_pressure(drill_id, data_type):
-    now0 = time.time()
-    objs = Record.objects.filter(drill_id=drill_id, data_type=data_type).order_by('-time')
-    now1 = time.time()
+    print(request, drill_id, deep, data_type)
+    res = {
+        'data': None,
+        'message': 'data delete',
+        'status': 'success',
+    }
+    try:
+        objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type)
+        if len(objs) == 0:
+            res['message'] = "Error: no data exist for Drill %s deep %s %s" % (drill_id, deep, data_type)
+            res['status'] = 'fail'
+            return JsonResponse(res)
+        assert len(objs) == 1
+
+        record_id = objs[0].id
+
+        st_sel = int(request.GET['start'])
+        et_sel = int(request.GET['end'])
+
+        if data_type == "upWell":
+            #objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id, index__gte=st_sel, index__lt=et_sel)
+            objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+        else:
+            #objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id, index__gte=st_sel, index__lt=et_sel)
+            objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+
+        if len(objs) == 0:
+            res['message'] = "Warning: no data exist for Drill %s deep %s %s at range [%s,  %s)" % (drill_id, deep, data_type, str(st_sel), str(et_sel))
+            res['status'] = 'fail'
+            return JsonResponse(res)
+
+        num_objs = len(objs[st_sel:et_sel])
+
+        #print(objs[st_sel:et_sel])
+        for obj in objs[st_sel:et_sel]:
+            obj.delete()
+
+        res['message'] = 'delete %s pressures' % (num_objs)
+    except Exception as e:
+        res['message'] = str(e)
+        res['status'] = 'fail'
+
+    return JsonResponse(res)
+
+def get_pressure(drill_id, deep, data_type):
+
+    objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type) #.order_by('-time')
+
     if len(objs) == 0:
         return None
     else:
         record_id = objs[0].id
-
+        samplingFreq = objs[0].samplingFreq
     pressure = []
+    print(samplingFreq)
     if data_type == "upWell":
         objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
 
@@ -484,16 +615,16 @@ def get_pressure(drill_id, data_type):
         print("pressure len", len(pressure))
     #print(now4-now3, now3-now2, now2-now1, now1-now0)
     if len(pressure) > 0:
-        return pressure
+        return pressure, int(samplingFreq)
     else:
         return None
 
 
 @csrf_exempt
-def calculate_pb(request, drill_id, data_type):
+def calculate_pb(request, drill_id, deep, data_type):
     now0 = time.time()
     logger.info(request.method + ' ' + request.path_info)
-    print(request, drill_id, data_type)
+    print(request, drill_id, deep, data_type)
     res = {
         'data': None,
         'message': 'calculate_pb',
@@ -503,11 +634,13 @@ def calculate_pb(request, drill_id, data_type):
     et_sel = int(request.GET['end'])
 
     now1 = time.time()
-    pressure = get_pressure(drill_id, data_type)
-    if pressure is None:
+
+    ret = get_pressure(drill_id, deep, data_type)
+    if ret is None:
         res['message'] = 'no data'
         res['status'] = 'fail'
         return JsonResponse(res)
+    pressure, samplingFreq = ret
 
     now2 = time.time()
     est = estimate_pb(pressure, st_sel, et_sel)
@@ -523,7 +656,7 @@ def calculate_pb(request, drill_id, data_type):
     return JsonResponse(res)
 
 @csrf_exempt
-def calculate_pr(request, drill_id, data_type):
+def calculate_pr(request, drill_id, deep, data_type):
     logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': None,
@@ -534,13 +667,14 @@ def calculate_pr(request, drill_id, data_type):
     st_sel = int(request.GET['start'])
     et_sel = int(request.GET['end'])
 
-    pressure = get_pressure(drill_id, data_type)
-    if pressure is None:
+    ret = get_pressure(drill_id, deep, data_type)
+    if ret is None:
         res['message'] = 'no data'
         res['status'] = 'fail'
         return JsonResponse(res)
+    pressure, samplingFreq = ret
 
-    est = estimate_pr(pressure, st_sel, et_sel)
+    est = estimate_pr(pressure, st_sel, et_sel, samplingFreq=samplingFreq)
     if est is None:
         res['message'] = 'error in estimate_pr'
         res['status'] = 'fail'
@@ -555,7 +689,7 @@ def calculate_pr(request, drill_id, data_type):
 
 
 @csrf_exempt
-def calculate_ps(request, drill_id, data_type):
+def calculate_ps(request, drill_id, deep, data_type):
     logger.info(request.method + ' ' + request.path_info)
     print(request, drill_id, data_type)
     res = {
@@ -568,20 +702,21 @@ def calculate_ps(request, drill_id, data_type):
     et_sel = int(request.GET['end'])
     method = int(request.GET['method'])
 
-    pressure = get_pressure(drill_id, data_type)
-    if pressure is None:
+    ret = get_pressure(drill_id, deep, data_type)
+    if ret is None:
         res['message'] = 'no data'
         res['status'] = 'fail'
         return JsonResponse(res)
+    pressure, samplingFreq = ret
 
     if method == 1:
-        est = estimate_ps_tangent(pressure, st_sel, et_sel)
+        est = estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=samplingFreq)
     elif method == 2:
-        est = estimate_ps_muskat(pressure, st_sel, et_sel)
+        est = estimate_ps_muskat(pressure, st_sel, et_sel, samplingFreq=samplingFreq)
     elif method == 3:
-        est = estimate_ps_dp_dt_robust(pressure, st_sel, et_sel)
+        est = estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=samplingFreq)
     elif method == 4:
-        est = estimate_ps_dt_dp_robust(pressure, st_sel, et_sel)
+        est = estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=samplingFreq)
 
     if est is None:
         res['status'] = 'fail'

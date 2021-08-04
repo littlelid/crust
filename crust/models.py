@@ -2,12 +2,15 @@ from django.db import models
 import datetime
 # Create your models here.
 
+
+
+
 class Drill(models.Model):
     """Model representing a book (but not a specific copy of a book)."""
 
     name = models.CharField(max_length=50, default='')
 
-    deep = models.CharField(max_length=50, default='')
+
     position = models.CharField(max_length=50, default='')
 
     rockAvgCapacity = models.CharField(max_length=50, default='')
@@ -23,17 +26,20 @@ class Drill(models.Model):
 
     comment = models.CharField(max_length=50, default='')
 
-
     def __str__(self):
         """String for representing the Model object."""
         return self.name
+
+
 
 class Record(models.Model):
 
     time = models.TimeField(auto_now=False, auto_now_add=False)  # 采集时间
     data_type = models.CharField(max_length=20)
-    drill = models.ForeignKey('Drill', on_delete=models.CASCADE)
+    deep = models.CharField(max_length=50, default='')
+    samplingFreq = models.CharField(max_length=50, default='')
 
+    drill = models.ForeignKey('Drill', on_delete=models.CASCADE)
 
 class Calculation(models.Model):
 
