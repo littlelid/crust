@@ -24,7 +24,7 @@ class Drill(models.Model):
 
     measureDate = models.DateField(default=datetime.date.today)
 
-    deep = models.CharField(max_length=50, default='')
+    max_deep = models.CharField(max_length=50, default='')
 
     comment = models.CharField(max_length=50, default='')
 
