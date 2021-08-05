@@ -548,7 +548,12 @@ def pressure(request, drill_id, deep, data_type):
                     objs = list(objs)
                     objs = [model_to_dict(obj) for obj in objs]
 
-                    data['axisX'] = (np.arange(len(objs)) + (pageCur-1) * pageSize).tolist()
+                    axisX = (np.arange(len(objs)))  # + (pageCur - 1) * pageSize).tolist()
+                    if (pageCur is not None and pageSize is not None):
+                        axisX += (pageCur - 1) * pageSize
+                    data['axisX'] = axisX.tolist()
+
+
                     fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
                     print("xxx")
                     for field in fields:
@@ -589,7 +594,12 @@ def pressure(request, drill_id, deep, data_type):
 
                     #objs = [model_to_dict(obj) for obj in objs]
 
-                    data['axisX'] = (np.arange(len(objs)) + (pageCur - 1) * pageSize).tolist()
+
+                    axisX = (np.arange(len(objs))) #+ (pageCur - 1) * pageSize).tolist()
+                    if (pageCur is not None and pageSize is not None):
+                        axisX += (pageCur - 1) * pageSize
+                    data['axisX'] = axisX.tolist()
+
                     fields = ['downStress', 'measureStress', 'downFlow', 'downTemperature']
                     #for field in fields:
                     #    data[field] = [obj[field] for obj in objs]
@@ -597,7 +607,6 @@ def pressure(request, drill_id, deep, data_type):
                     for field in fields:
 
                         raw = [obj[field] for obj in objs]
-
                         raw = np.array(raw, dtype=np.float16).tolist()
 
                         if len(raw) <= samplingFreq or samplingFreq <=1:
