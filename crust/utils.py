@@ -54,6 +54,11 @@ def save_upWell(filename, record_id):
     try:
         index = 0
         for record in records:
+
+            for r in record:
+                if not r.isnumeric():
+                    continue
+
             params = {}
             params['index'] = index
             params['upStress'] = record[0]
@@ -93,6 +98,11 @@ def save_downWell(filename, record_id):
     try:
         index = 0
         for record in records:
+
+            for r in record:
+                if not r.isnumeric():
+                    continue
+
             params = {}
 
             params['index'] = index
@@ -101,6 +111,8 @@ def save_downWell(filename, record_id):
             params['downFlow'] = record[2]
             params['downTemperature'] = record[3]
             params['record_id'] = record_id
+
+
 
             objs.append(Drill_Downwell_Data(**params))
 
