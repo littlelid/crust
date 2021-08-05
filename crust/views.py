@@ -407,7 +407,101 @@ def record(request, drill_id, deep=None, data_type=None):
             res['message'] = "Error: " + str(e)
             res['status'] = 'fail'
 
+
+    logger.info(res['status'] + ' ' + res['message'])
+
+    return JsonResponse(res)
+
+@csrf_exempt
+def record_count(request, drill_id, deep, data_type):
+    logger.info(request.method + ' ' + request.path_info)
+    res = {
+        'data': 0,
+        'message': 'record_count',
+        'status':  'success',
+    }
+
+    if request.method == "GET":
+        objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type) #.order_by('-time')
+        if len(objs) == 0:
+            res['data'] = 0
+            res['message'] = 'no data'
+            res['status'] = 'fail'
+        else:
+            record_id = objs[0].id
+            print('record id is', record_id, deep, data_type)
+            try:
+
+                if data_type == 'upWell':
+                    cnt = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).count()
+
+                else:
+                    cnt = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).count()
+
+                res['data'] = cnt
+                res['message'] = '%s pressure cnt: %s' % (data_type, cnt)
+
+            except Exception as e:
+                res['message'] = str(e)
+                res['status'] = 'fail'
+
+    logger.info(res['status'] + ' ' + res['message'])
+
+    return JsonResponse(res)
+
+@csrf_exempt
+def pressure(request, drill_id, deep, data_type):
+    print(request, drill_id, deep, data_type)
+
+    if request.method == "DELETE":
+
+        res = {
+            'data': None,
+            'message': 'delete pressure',
+            'status': 'success',
+        }
+        try:
+            objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type)
+            if len(objs) == 0:
+                res['message'] = "Error: no data exist for Drill %s deep %s %s" % (drill_id, deep, data_type)
+                res['status'] = 'fail'
+                return JsonResponse(res)
+            assert len(objs) == 1
+
+            record_id = objs[0].id
+
+            st_sel = int(request.GET['start'])
+            et_sel = int(request.GET['end'])
+
+            if data_type == "upWell":
+                #objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id, index__gte=st_sel, index__lt=et_sel)
+                objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+            else:
+                #objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id, index__gte=st_sel, index__lt=et_sel)
+                objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
+
+            if len(objs) == 0:
+                res['message'] = "Warning: no data exist for Drill %s deep %s %s at range [%s,  %s)" % (drill_id, deep, data_type, str(st_sel), str(et_sel))
+                res['status'] = 'fail'
+                return JsonResponse(res)
+
+            num_objs = len(objs[st_sel:et_sel])
+
+            #print(objs[st_sel:et_sel])
+            for obj in objs[st_sel:et_sel]:
+                obj.delete()
+
+            res['message'] = 'delete %s pressures' % (num_objs)
+        except Exception as e:
+            res['message'] = str(e)
+            res['status'] = 'fail'
     elif request.method == "GET":
+        res = {
+            'data': None,
+            'message': 'get pressure',
+            'status': 'success',
+        }
+
         try:
 
             assert (deep is not None) and (data_type is not None) and (data_type is not None)
@@ -516,97 +610,11 @@ def record(request, drill_id, deep=None, data_type=None):
                         data[field + '_smooth'] = raw_smooth
 
                 res['data'] = data
-                res['message'] = 'get'
+                #res['message'] = 'get'
 
         except Exception as e:
                 res['message'] = "Error: " + str(e)
                 res['status'] = 'fail'
-
-    logger.info(res['status'] + ' ' + res['message'])
-
-    return JsonResponse(res)
-
-@csrf_exempt
-def record_count(request, drill_id, deep, data_type):
-    logger.info(request.method + ' ' + request.path_info)
-    res = {
-        'data': 0,
-        'message': 'record_count',
-        'status':  'success',
-    }
-
-    if request.method == "GET":
-        objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type) #.order_by('-time')
-        if len(objs) == 0:
-            res['data'] = 0
-            res['message'] = 'no data'
-            res['status'] = 'fail'
-        else:
-            record_id = objs[0].id
-            print('record id is', record_id, deep, data_type)
-            try:
-
-                if data_type == 'upWell':
-                    cnt = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).count()
-
-                else:
-                    cnt = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).count()
-
-                res['data'] = cnt
-                res['message'] = '%s pressure cnt: %s' % (data_type, cnt)
-
-            except Exception as e:
-                res['message'] = str(e)
-                res['status'] = 'fail'
-
-    logger.info(res['status'] + ' ' + res['message'])
-
-    return JsonResponse(res)
-
-@csrf_exempt
-def delete_pressure(request, drill_id, deep, data_type):
-
-    print(request, drill_id, deep, data_type)
-    res = {
-        'data': None,
-        'message': 'data delete',
-        'status': 'success',
-    }
-    try:
-        objs = Record.objects.filter(drill_id=drill_id, deep=deep, data_type=data_type)
-        if len(objs) == 0:
-            res['message'] = "Error: no data exist for Drill %s deep %s %s" % (drill_id, deep, data_type)
-            res['status'] = 'fail'
-            return JsonResponse(res)
-        assert len(objs) == 1
-
-        record_id = objs[0].id
-
-        st_sel = int(request.GET['start'])
-        et_sel = int(request.GET['end'])
-
-        if data_type == "upWell":
-            #objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id, index__gte=st_sel, index__lt=et_sel)
-            objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-        else:
-            #objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id, index__gte=st_sel, index__lt=et_sel)
-            objs = Drill_Downwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
-
-        if len(objs) == 0:
-            res['message'] = "Warning: no data exist for Drill %s deep %s %s at range [%s,  %s)" % (drill_id, deep, data_type, str(st_sel), str(et_sel))
-            res['status'] = 'fail'
-            return JsonResponse(res)
-
-        num_objs = len(objs[st_sel:et_sel])
-
-        #print(objs[st_sel:et_sel])
-        for obj in objs[st_sel:et_sel]:
-            obj.delete()
-
-        res['message'] = 'delete %s pressures' % (num_objs)
-    except Exception as e:
-        res['message'] = str(e)
-        res['status'] = 'fail'
 
     return JsonResponse(res)
 
