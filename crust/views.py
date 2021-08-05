@@ -548,7 +548,7 @@ def pressure(request, drill_id, deep, data_type):
                     objs = list(objs)
                     objs = [model_to_dict(obj) for obj in objs]
 
-                    data['axisX'] = list(range(len(objs)))
+                    data['axisX'] = (np.arange(len(objs)) + (pageCur-1) * pageSize).tolist()
                     fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
                     print("xxx")
                     for field in fields:
@@ -589,7 +589,7 @@ def pressure(request, drill_id, deep, data_type):
 
                     #objs = [model_to_dict(obj) for obj in objs]
 
-                    data['axisX'] = list(range(len(objs)))
+                    data['axisX'] = (np.arange(len(objs)) + (pageCur - 1) * pageSize).tolist()
                     fields = ['downStress', 'measureStress', 'downFlow', 'downTemperature']
                     #for field in fields:
                     #    data[field] = [obj[field] for obj in objs]
