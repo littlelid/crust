@@ -463,7 +463,7 @@ def record(request, drill_id, deep=None, data_type=None):
                         raw = np.array(raw, dtype=np.float16).tolist()
 
 
-                        if len(raw) <= samplingFreq:
+                        if len(raw) <= samplingFreq or samplingFreq <=1:
                             raw_smooth = []
                         else:
                             raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
@@ -506,7 +506,7 @@ def record(request, drill_id, deep=None, data_type=None):
 
                         raw = np.array(raw, dtype=np.float16).tolist()
 
-                        if len(raw) <= samplingFreq:
+                        if len(raw) <= samplingFreq or samplingFreq <=1:
                             raw_smooth = []
                         else:
                             raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()

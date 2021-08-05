@@ -39,7 +39,6 @@ class Drill(models.Model):
 
     def save(self, *args, **kwargs):
         super(Drill, self).save(*args, **kwargs)
-        
         now = datetime.datetime.now()
         for data_type in ['upWell', 'downWell']:
 
