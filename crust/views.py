@@ -319,8 +319,14 @@ def fileUpload(request, drill_id, deep, data_type):
             record.save()
 
             if data_type == "upWell":
+                objs = Drill_Upwell_Data.objects.filter(record_id__exact=record.id)
+                objs.delete()
+                print("delete old pressure")
                 status, message = save_upWell(filename, record.id)
             else:
+                objs = Drill_Downwell_Data.objects.filter(record_id__exact=record.id)
+                objs.delete()
+                print("delete old pressure")
                 status, message = save_downWell(filename, record.id)
 
             if status is False:
@@ -552,7 +558,6 @@ def pressure(request, drill_id, deep, data_type):
                     if (pageCur is not None and pageSize is not None):
                         axisX += (pageCur - 1) * pageSize
                     data['axisX'] = axisX.tolist()
-
 
                     fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
                     print("xxx")
