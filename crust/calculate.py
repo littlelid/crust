@@ -219,36 +219,18 @@ def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
         ps = pressure_hat[ps_inx]
 
 
+        cut_idxs = np.where(y_pred < np.min(y_target) )
+        if len(cut_idxs) > 0:
+            cut_idx = cut_idxs[0][0]
+        else:
+            cut_idx = -1
+
         X_pred = X_pred.tolist()
         y_target = y_target.tolist()
         y_pred = y_pred.tolist()
-        # target_line = {
-        #     'label': 'Pressure',
-        #     'x': X_pred,
-        #     'y': y_target,
-        # }
-        # fitted_line = {
-        #     'label': 'Fitted line',
-        #     'x': X_pred,
-        #     'y': y_pred,
-        # }
-        # cross_line0 = {
-        #     'label': 'Ps',
-        #     'x': [min(X_pred), max(X_pred)],
-        #     'y': [ps, ps],
-        # }
-        # cross_line1 = {
-        #     'label': '',
-        #     'x': [index, index],
-        #     'y': [min(y_target), max(y_target)],
-        # }
-        #
-        # lines = {
-        #     'target_line': target_line,
-        #     'fitted_line': fitted_line,
-        #     'cross_line0': cross_line0,
-        #     'cross_line1': cross_line1,
-        # }
+
+
+
         lines = [
             {
                 "name": "Origin Pressure",
@@ -260,7 +242,7 @@ def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
                 "name": "Fitted Pressure",
                 "type": "line",
                 "showInLegend": True,
-                "dataPoints": {"x": X_pred, "y": y_pred},
+                "dataPoints": {"x": X_pred[:cut_idx], "y": y_pred[:cut_idx]},
             },
 
             {
