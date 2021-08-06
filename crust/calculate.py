@@ -6,6 +6,8 @@ from .utils import piecewise_linear_two, linear_func, exp_func, my_linear_regree
 
 from sklearn.linear_model import HuberRegressor
 
+from scipy.ndimage.filters import uniform_filter1d
+
 def estimate_pb(pressure, st_sel, et_sel):
 
     try:
@@ -38,9 +40,11 @@ def estimate_pb(pressure, st_sel, et_sel):
 def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
 
     try:
-        if samplingFreq % 2 == 0:
-            samplingFreq += 1
-        pressure_hat = savgol_filter(pressure, samplingFreq, 1) # smooth
+        # if samplingFreq % 2 == 0:
+        #    samplingFreq += 1
+
+        # pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        pressure_hat = uniform_filter1d(pressure, size=samplingFreq)
 
         st_fit = st_sel
         et_fit = st_sel + max(5, int((et_sel - st_sel) * 0.4))
@@ -55,9 +59,9 @@ def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
         err_mean = np.mean(abs(y_fit - y)) #average regreesion error
 
         #predict
-        st_pred = st_fit
+        st_pred = st_fit - 100
         #length_pred = 100
-        length_pred = int(et_sel - st_sel)
+        length_pred = int(et_sel - st_sel) + 100
 
         X_pred = np.arange(st_pred, st_pred + length_pred)
         y_pred = linear_func(X_pred, *p)
@@ -166,10 +170,11 @@ def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
 
 def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
     try:
-        print(len(pressure))
-        if samplingFreq % 2 == 0:
-            samplingFreq += 1
-        pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        # if samplingFreq % 2 == 0:
+        #    samplingFreq += 1
+
+        # pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        pressure_hat = uniform_filter1d(pressure, size=samplingFreq)
 
         st_fit = st_sel
         # length = min(30, int((et_sel-st_sel) * 0.05))
@@ -287,10 +292,11 @@ def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
 def estimate_ps_muskat(pressure, st_sel, et_sel, samplingFreq=7):
 
     try:
-        if samplingFreq % 2 == 0:
-            samplingFreq += 1
-        pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        # if samplingFreq % 2 == 0:
+        #    samplingFreq += 1
 
+        # pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        pressure_hat = uniform_filter1d(pressure, size=samplingFreq)
 
         #fitting
 
@@ -418,9 +424,11 @@ def estimate_ps_muskat(pressure, st_sel, et_sel, samplingFreq=7):
 
 def estimate_ps_dp_dt(pressure, st_sel, et_sel, samplingFreq=7):
 
-    if samplingFreq % 2 == 0:
-        samplingFreq += 1
-    pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+    # if samplingFreq % 2 == 0:
+    #    samplingFreq += 1
+
+    # pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+    pressure_hat = uniform_filter1d(pressure, size=samplingFreq)
 
     pressure_hat_sel = pressure_hat[st_sel: et_sel]
     dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
@@ -495,10 +503,12 @@ def estimate_ps_dp_dt(pressure, st_sel, et_sel, samplingFreq=7):
 
 def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolution = 50):
     try:
-        if samplingFreq % 2 == 0:
-            samplingFreq += 1
+        #if samplingFreq % 2 == 0:
+        #    samplingFreq += 1
 
-        pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        #pressure_hat = savgol_filter(pressure, samplingFreq, 1)  # smooth
+        pressure_hat = uniform_filter1d(pressure, size=samplingFreq)
+
         pressure_hat_sel = pressure_hat[st_sel: et_sel]
         dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
         dp_dt = -abs(dp_dt)
@@ -825,11 +835,13 @@ def estimate_ps_dt_dp(pressure, st_sel, et_sel, samplingFreq=7, resolution=40):
     return res
 
 
-def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=7, resolution=20):
+def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resolution=20):
     try:
-        if samplingFreq % 2 == 0:
-            samplingFreq += 1
-        pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+        #if samplingFreq % 2 == 0:
+        #    samplingFreq += 1
+        #pressure_hat = savgol_filter(pressure, 7, 1)  # smooth
+        pressure_hat = uniform_filter1d(pressure, size=samplingFreq)
+
         pressure_hat_sel = pressure_hat[st_sel: et_sel]
         dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
         dp_dt = -abs(dp_dt)
@@ -894,8 +906,11 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
             regressor3.fit(X3, y3)
             if (regressor3.coef_[0] < 0):
                 continue
-            if (regressor3.coef_[0] > regressor1.coef_[0] or regressor3.coef_[0] > regressor2.coef_[0]):
+            #if (regressor3.coef_[0] > regressor1.coef_[0] or regressor3.coef_[0] > regressor2.coef_[0]):
+            #    continue
+            if not (regressor3.coef_[0] < regressor2.coef_[0] and regressor2.coef_[0] < regressor1.coef_[0]):
                 continue
+
             y3_pred = regressor3.predict(X3)
             errs3 = y3_pred - y3
 
