@@ -59,9 +59,9 @@ def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
         err_mean = np.mean(abs(y_fit - y)) #average regreesion error
 
         #predict
-        st_pred = st_fit - 100
+        st_pred = st_fit
         #length_pred = 100
-        length_pred = int(et_sel - st_sel) + 100
+        length_pred = int(et_sel - st_sel)
 
         X_pred = np.arange(st_pred, st_pred + length_pred)
         y_pred = linear_func(X_pred, *p)

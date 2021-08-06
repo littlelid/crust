@@ -20,6 +20,9 @@ from django.forms.models import model_to_dict
 from .utils import save_downWell, save_upWell
 from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp, estimate_ps_dp_dt_robust, estimate_ps_dt_dp_robust
 
+from scipy.ndimage.filters import uniform_filter1d
+
+
 import json, time
 
 import logging
@@ -522,8 +525,8 @@ def pressure(request, drill_id, deep, data_type):
                 print("1111")
                 record_id = objs[0].id
                 samplingFreq = int(objs[0].samplingFreq)
-                if samplingFreq % 2 == 0:
-                    samplingFreq += 1
+                if samplingFreq < 0:
+                    samplingFreq = 20
 
                 print('record id is', record_id)
 
@@ -570,9 +573,9 @@ def pressure(request, drill_id, deep, data_type):
                         if len(raw) <= samplingFreq or samplingFreq <=1:
                             raw_smooth = []
                         else:
-                            raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
+                            #raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
 
-                        #raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
+                            raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
 
                         data[field] = raw  # [ obj[field] for obj in objs]
                         data[field + '_smooth'] = raw_smooth
@@ -617,8 +620,8 @@ def pressure(request, drill_id, deep, data_type):
                         if len(raw) <= samplingFreq or samplingFreq <=1:
                             raw_smooth = []
                         else:
-                            raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
-
+                            #raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
+                            raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
 
                         data[field] = raw  # [ obj[field] for obj in objs]
                         data[field + '_smooth'] = raw_smooth
