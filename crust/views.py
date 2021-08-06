@@ -510,7 +510,7 @@ def pressure(request, drill_id, deep, data_type):
             'message': 'get pressure',
             'status': 'success',
         }
-        t1 = time.time()
+
         try:
 
             assert (deep is not None) and (data_type is not None) and (data_type is not None)
@@ -553,10 +553,10 @@ def pressure(request, drill_id, deep, data_type):
                             objs = p.page(pageCur).object_list
                         else:
                             objs = []
-                    t2 = time.time()
+
                     objs = list(objs)
                     objs = [model_to_dict(obj) for obj in objs]
-                    t3 = time.time()
+
                     axisX = (np.arange(len(objs)))  # + (pageCur - 1) * pageSize).tolist()
                     if (pageCur is not None and pageSize is not None):
                         axisX += (pageCur - 1) * pageSize
@@ -579,7 +579,7 @@ def pressure(request, drill_id, deep, data_type):
 
                         data[field] = raw  # [ obj[field] for obj in objs]
                         data[field + '_smooth'] = raw_smooth
-                    t4 = time.time()
+
                     #print(data)
                     #print(data.keys())
 
@@ -632,7 +632,7 @@ def pressure(request, drill_id, deep, data_type):
         except Exception as e:
                 res['message'] = "Error: " + str(e)
                 res['status'] = 'fail'
-        print(time.time() - t1, t2-t1, t3-t2, t4-t3)
+
 
     return JsonResponse(res)
 
