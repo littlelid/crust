@@ -37,15 +37,15 @@ class Drill(models.Model):
         """String for representing the Model object."""
         return self.name
 
-    def save(self, *args, **kwargs):
-        super(Drill, self).save(*args, **kwargs)
-        now = datetime.datetime.now()
-        for data_type in ['upWell', 'downWell']:
-
-            record = Record(data_type=data_type, drill_id=self.id, time=now, deep=self.max_deep, samplingFreq=1)
-            record.save()
-
-            logger.info('add new deep %s for Drill %s' % (self.max_deep, self.id))
+    # def save(self, *args, **kwargs):
+    #     super(Drill, self).save(*args, **kwargs)
+    #     now = datetime.datetime.now()
+    #     for data_type in ['upWell', 'downWell']:
+    #
+    #         record = Record(data_type=data_type, drill_id=self.id, time=now, deep=self.max_deep, samplingFreq=1)
+    #         record.save()
+    #
+    #         logger.info('add new deep %s for Drill %s' % (self.max_deep, self.id))
 
 
 

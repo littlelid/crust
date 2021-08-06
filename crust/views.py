@@ -384,7 +384,12 @@ def record(request, drill_id, deep=None, data_type=None):
 
             deep = params['deep']
             samplingFreq = params.get('samplingFreq')
-            print(deep, samplingFreq)
+            #print(deep, samplingFreq)
+
+            drill = Drill.objects.get(pk=drill_id)
+            #print(drill)
+            if float(deep) > float(drill.max_deep):
+                raise Exception("deep %s exceeds max deep %s" % (deep, drill.max_deep))
 
             objs = Record.objects.filter(drill_id=drill_id, deep=deep)
             if len(objs) > 0:
