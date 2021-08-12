@@ -126,7 +126,7 @@ def drill(request, drill_id=None):
                     samplingFreqs.append(record.samplingFreq)
 
             #samplingFreqs = [ record.samplingFreq for record in records]
-            idxs = np.argsort(deeps)
+            idxs = np.argsort([float(deep) for deep in deeps])
             deeps = [ deeps[idx] for idx in idxs]
             samplingFreqs = [samplingFreqs[idx] for idx in idxs]
 
