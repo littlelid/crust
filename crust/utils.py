@@ -55,9 +55,8 @@ def save_upWell(filename, record_id):
         index = 0
         for record in records:
 
-            for r in record:
-                if not r.isnumeric():
-                    continue
+            if not record[0].isnumeric(): #upStress
+                continue
 
             params = {}
             params['index'] = index
@@ -98,10 +97,9 @@ def save_downWell(filename, record_id):
     try:
         index = 0
         for record in records:
-
-            for r in record:
-                if not r.isnumeric():
-                    continue
+            #for r in record:
+            if not record[0].isnumeric(): #downStress
+                continue
 
             params = {}
 

@@ -120,15 +120,21 @@ def drill(request, drill_id=None):
 
             deeps = []
             samplingFreqs = []
-            for  record in records: #每个upWell 和 downWell都有一个record
+            for record in records: #每个upWell 和 downWell都有一个record
                 if record.deep not in deeps:
                     deeps.append(record.deep)
                     samplingFreqs.append(record.samplingFreq)
 
             #samplingFreqs = [ record.samplingFreq for record in records]
+            idxs = np.argsort(deeps)
+            deeps = [ deeps[idx] for idx in idxs]
+            samplingFreqs = [samplingFreqs[idx] for idx in idxs]
 
             obj['fields']['deep'] = deeps
             obj['fields']['samplingFreq'] = samplingFreqs
+
+
+
 
         res['data'] = objs
 
@@ -381,17 +387,20 @@ def record(request, drill_id, deep=None, data_type=None):
         try:
             params = request.POST.dict()
 
+            print(params)
 
             deep = params['deep']
             samplingFreq = params.get('samplingFreq')
-            #print(deep, samplingFreq)
+
 
             drill = Drill.objects.get(pk=drill_id)
             #print(drill)
-            if float(deep) > float(drill.max_deep):
+
+            if drill.max_deep.isnumeric() and float(deep) > float(drill.max_deep):
                 raise Exception("deep %s exceeds max deep %s" % (deep, drill.max_deep))
 
             objs = Record.objects.filter(drill_id=drill_id, deep=deep)
+
             if len(objs) > 0:
                 if(samplingFreq is None or samplingFreq == ''):
                     res['message'] = "Error:  deep %s already exists for Drill %s and samplingFreq is null (To update samplingFreq, please provide samplingFreq)" % (deep, drill_id)  # "Error: " + "deep " + deep + ' '
@@ -509,6 +518,7 @@ def pressure(request, drill_id, deep, data_type):
         except Exception as e:
             res['message'] = str(e)
             res['status'] = 'fail'
+
     elif request.method == "GET":
         res = {
             'data': None,
@@ -618,11 +628,19 @@ def pressure(request, drill_id, deep, data_type):
                     #    data[field] = [obj[field] for obj in objs]
 
                     for field in fields:
+                        broken = False
+
+                        for obj in objs:
+                            if not obj[field].isnumeric():
+                                broken = True
+                                break
 
                         raw = [obj[field] for obj in objs]
-                        raw = np.array(raw, dtype=np.float16).tolist()
 
-                        if len(raw) <= samplingFreq or samplingFreq <=1:
+                        if not broken:
+                            raw = np.array(raw, dtype=np.float16).tolist()
+
+                        if len(raw) <= samplingFreq or samplingFreq <=1 or broken:
                             raw_smooth = []
                         else:
                             #raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
