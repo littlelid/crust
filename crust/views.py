@@ -239,25 +239,56 @@ def calculation(request, drill_id, deep, data_type):
     if request.method == 'GET':
         try:
             stress_type = request.GET.get('stress_type')
-            method = request.GET.get('method')
 
-            objs = Calculation.objects.filter(record_id__exact=record_id, stress_type=stress_type, method=method).order_by('-time')
+            if stress_type == "all":
+                data = {}
+                for t in ['pb', 'pr', 'ps']:
 
-            if len(objs) >= 1:
-                objs = objs[0:1]
+                    if t is 'ps':
+                        methods = [1, 2, 3, 4]
+                    else:
+                        methods = [1]
 
-            serialized_obj = serializers.serialize('json', objs)
-            objs = json.loads(serialized_obj)
+                    data[t] = []
+                    for method in methods:
+                        objs = Calculation.objects.filter(record_id__exact=record_id, stress_type=t,
+                                                          method=method).order_by('-time')
+
+                        if len(objs) >= 1:
+                            objs = objs[0:1]
+
+                        serialized_obj = serializers.serialize('json', objs)
+                        objs = json.loads(serialized_obj)
+
+                        for obj in objs:
+                            obj['fields']['id'] = obj['pk']
+
+                        data[t].extend(objs)
+                
+                res['data'] = data
+                res['message'] = "get all calculations"
+                res['status'] = 'success' if len(objs) > 0 else 'fail'
+
+            else:
+                method = request.GET.get('method')
+
+                objs = Calculation.objects.filter(record_id__exact=record_id, stress_type=stress_type, method=method).order_by('-time')
+
+                if len(objs) >= 1:
+                    objs = objs[0:1]
+
+                serialized_obj = serializers.serialize('json', objs)
+                objs = json.loads(serialized_obj)
 
 
-            for obj in objs:
-                obj['fields']['id'] = obj['pk']
+                for obj in objs:
+                    obj['fields']['id'] = obj['pk']
 
-            res['data'] = objs
-            res['message'] = "get %s calculation" % len(objs)
-            res['status'] = 'success' if len(objs) > 0 else 'fail'
+                res['data'] = objs
+                res['message'] = "get %s calculation" % len(objs)
+                res['status'] = 'success' if len(objs) > 0 else 'fail'
 
-            logger.info(res['message'])
+                logger.info(res['message'])
 
         except Exception as e:
             logger.info(str(e))
