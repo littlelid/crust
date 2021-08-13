@@ -4,6 +4,13 @@ from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data
 import numpy as np
 from scipy import optimize
 
+def isfloat(value):
+  try:
+    float(value)
+    return True
+  except ValueError:
+    return False
+
 def load_records(filename, ncol):
 
 
@@ -55,7 +62,7 @@ def save_upWell(filename, record_id):
         index = 0
         for record in records:
 
-            if not record[0].isnumeric(): #upStress
+            if not isfloat(record[0]): #upStress
                 continue
 
             params = {}
@@ -98,7 +105,7 @@ def save_downWell(filename, record_id):
         index = 0
         for record in records:
             #for r in record:
-            if not record[0].isnumeric(): #downStress
+            if not isfloat(record[0]): #downStress
                 continue
 
             params = {}

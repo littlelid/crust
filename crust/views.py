@@ -231,6 +231,7 @@ def calculation(request, drill_id, deep, data_type):
         res['status'] = 'fail'
         return JsonResponse(res)
 
+
     assert len(objs) == 1
 
     record_id = objs[0].id
@@ -264,7 +265,7 @@ def calculation(request, drill_id, deep, data_type):
                             obj['fields']['id'] = obj['pk']
 
                         data[t].extend(objs)
-                
+
                 res['data'] = data
                 res['message'] = "get all calculations"
                 res['status'] = 'success' if len(objs) > 0 else 'fail'
@@ -437,19 +438,18 @@ def record(request, drill_id, deep=None, data_type=None):
                     res['message'] = "Error:  deep %s already exists for Drill %s and samplingFreq is null (To update samplingFreq, please provide samplingFreq)" % (deep, drill_id)  # "Error: " + "deep " + deep + ' '
                     res['status'] = 'fail'
                 else:
-                    assert len(objs) == 2
+                    assert len(objs) == 2, "Multiple Records for deep %s." % deep
                     for obj in objs:
                         obj.samplingFreq = samplingFreq
                         obj.save()
 
-                    res['message'] = "update samplingFreq of deep %s for Drill %s (now = %s)" % (
-                    deep, drill_id, samplingFreq)  # "Error: " + "deep " + deep + ' '
+                    res['message'] = "update samplingFreq of deep %s for Drill %s (now = %s)" % (deep, drill_id, samplingFreq)  # "Error: " + "deep " + deep + ' '
                     res['status'] = 'success'
 
             else:
                 now = datetime.datetime.now()
                 for data_type in ['upWell', 'downWell']:
-                    samplingFreq2 = 1 if (samplingFreq is None or samplingFreq == '') else samplingFreq
+                    samplingFreq2 = 20 if (samplingFreq is None or samplingFreq == '') else samplingFreq
                     print(samplingFreq2)
                     record = Record(data_type=data_type, drill_id=drill_id, time=now, deep=deep, samplingFreq=samplingFreq2)
                     record.save()
