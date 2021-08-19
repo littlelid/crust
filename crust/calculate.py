@@ -522,8 +522,8 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
 
         for x1_split in X_split:
             # for x1_split in [0.2]:
-            index1 = np.where(X_norm <= x1_split)[0]
-            index2 = np.where((X_norm > x1_split))[0]
+            index1 = np.where(X_norm < x1_split)[0]
+            index2 = np.where((X_norm >= x1_split))[0]
 
             if len(index1) < 5 or len(index2) < 5:
                 continue
@@ -872,7 +872,7 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
             index1 = np.where(X_norm < x1_split)[0]
             index2 = np.where((X_norm >= x1_split) * (X_norm < x2_split))[0]
             index3 = np.where((X_norm >= x2_split))[0]
-            
+
             assert len(index1) + len(index2) + len(index3) == len(X)
 
             if len(index1) < 4 or len(index2) < 4 or len(index3) < 4:
@@ -936,6 +936,8 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
                 best_res['X3'] = X3
                 best_res['y3_pred'] = y3_pred
 
+                best_res['outliter_mask'] = np.concatenate([regressor1.outliers_, regressor2.outliers_, regressor3.outliers_])
+
                 best_res['outliers_X'] = np.concatenate(
                     [X1[regressor1.outliers_], X2[regressor2.outliers_], X3[regressor3.outliers_]])
                 best_res['outliers_y'] = np.concatenate(
@@ -961,6 +963,8 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
         y1_plot = y1_plot * y_range + y_min
         y2_plot = y2_plot * y_range + y_min
         y3_plot = y3_plot * y_range + y_min
+
+        outlier_mask = best_res['outliter_mask']
 
         outliers_X, outliers_y = best_res['outliers_X'].flatten(), best_res['outliers_y'].flatten()
         #plt.plot(X, y, 'o', label="-dt/dp vs. P")
@@ -988,7 +992,7 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
-                "dataPoints": {'x': X.tolist(), 'y': y.tolist()},
+                "dataPoints": {'x': X[outlier_mask == False].tolist(), 'y': y[outlier_mask == False].tolist()},
             },
             {
                 "name": "outliers",
