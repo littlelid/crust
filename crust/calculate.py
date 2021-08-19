@@ -574,6 +574,9 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
                 best_res['y1_pred'] = y1_pred
                 best_res['X2'] = X2
                 best_res['y2_pred'] = y2_pred
+
+                best_res['outliter_mask'] = np.concatenate([regressor1.outliers_, regressor2.outliers_])
+
                 best_res['outliers_X'] = np.concatenate([X1[regressor1.outliers_], X2[regressor2.outliers_]])
                 best_res['outliers_y'] = np.concatenate([y1[regressor1.outliers_], y2[regressor2.outliers_]])
 
@@ -594,6 +597,8 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
         X2_plot = X2_plot * X_range + X_min
         y1_plot = y1_plot * y_range + y_min
         y2_plot = y2_plot * y_range + y_min
+
+        outlier_mask = best_res['outliter_mask']
 
         outliers_X, outliers_y = best_res['outliers_X'].flatten(), best_res['outliers_y'].flatten()
         outliers_X = outliers_X * X_range + X_min
@@ -618,7 +623,7 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
-                "dataPoints": {'x': X.tolist(), 'y':y.tolist()},
+                "dataPoints": {'x': X[outlier_mask == False].tolist(), 'y':y[outlier_mask == False].tolist()},
             },
             {
                 "name": "outliers",
