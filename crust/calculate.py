@@ -556,6 +556,14 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
             errs = np.concatenate([errs1, errs2])
             fit_err = abs(errs).mean()
 
+            temp_k1, temp_k2 = regressor1.coef_[0], regressor2.coef_[0]
+            temp_b1, temp_b2 = regressor1.intercept_, regressor2.intercept_
+            x_intersect = (temp_b2 - temp_b1) / (temp_k1 - temp_k2)
+
+            if not (0 < x_intersect and x_intersect < 1):
+                print("outside")
+                continue
+
             if fit_err < min_fit_err:
                 min_fit_err = fit_err
                 best_res['errs'] = errs
@@ -828,7 +836,7 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
         dp_dt = pressure_hat_sel[1:] - pressure_hat_sel[:-1]
         dp_dt = -abs(dp_dt)
 
-        mask = abs(dp_dt) > 1e-5
+        mask = abs(dp_dt) > 4e-3
 
         dt_dp = 1 / (dp_dt - 1e-3)
 
@@ -899,6 +907,16 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
 
             errs = np.concatenate([errs1, errs2, errs3])
             fit_err = abs(errs).mean()
+
+            temp_k1, temp_k2, temp_k3 = regressor1.coef_[0], regressor2.coef_[0], regressor3.coef_[0]
+            temp_b1, temp_b2, temp_b3 = regressor1.intercept_, regressor2.intercept_, regressor3.intercept_
+            x_intersect1 = (temp_b2 - temp_b1) / (temp_k1 - temp_k2)
+
+            x_intersect2 = (temp_b3 - temp_b2) / (temp_k2 - temp_k3)
+
+            if not (0 < x_intersect1 and x_intersect1 < x_intersect2 and x_intersect2 < 1):
+                print("outside")
+                continue
 
             if fit_err < min_fit_err:
                 #print(x1_split, x2_split)
