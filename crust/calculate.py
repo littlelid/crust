@@ -320,8 +320,8 @@ def estimate_ps_muskat(pressure, st_sel, et_sel, samplingFreq=7):
         y_pred = exp_func(X_pred - best_st, *best_popt)
 
         ps = y_pred[0]
-        ps_inx = np.argmin(abs(pressure_hat-ps))
-        ps = pressure_hat[ps_inx]
+        #ps_inx = np.argmin(abs(pressure_hat-ps))
+        #ps = pressure_hat[ps_inx]
 
 
         X_pred = X_pred.tolist()
@@ -869,9 +869,12 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
 
         for x1_split, x2_split in X_split:
 
-            index1 = np.where(X_norm <= x1_split)[0]
-            index2 = np.where((X_norm >= x1_split) * (X_norm <= x2_split))[0]
+            index1 = np.where(X_norm < x1_split)[0]
+            index2 = np.where((X_norm >= x1_split) * (X_norm < x2_split))[0]
             index3 = np.where((X_norm >= x2_split))[0]
+            
+            assert len(index1) + len(index2) + len(index3) == len(X)
+
             if len(index1) < 4 or len(index2) < 4 or len(index3) < 4:
                 continue
 
@@ -976,6 +979,9 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
 
         #plt.plot([X_p, X_p], [np.max(y), np.min(y)], label="Pressure=" + str(round(X_p, 4)))
         print(x_intersect1, x_intersect2)
+
+
+
         lines = [
             {
                 "name": "dt/dp vs. P",
