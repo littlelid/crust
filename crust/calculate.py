@@ -496,11 +496,14 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
         dp_dt = -abs(dp_dt)
 
         X = pressure_hat_sel[1:]
+        sort_idx = np.argsort(X)
+        X = X[sort_idx]
         X_range = (np.max(X) - np.min(X))
         X_min = np.min(X)
         X_norm = (X - X_min) / X_range
 
         y = -dp_dt
+        y = y[sort_idx]
         y_range = np.max(y) - np.min(y)
         y_min = np.min(y)
         y_norm = (y - y_min) / y_range
@@ -524,6 +527,8 @@ def estimate_ps_dp_dt_robust(pressure, st_sel, et_sel, samplingFreq=7, resolutio
             # for x1_split in [0.2]:
             index1 = np.where(X_norm < x1_split)[0]
             index2 = np.where((X_norm >= x1_split))[0]
+
+            assert len(index1) + len(index2) == len(X)
 
             if len(index1) < 5 or len(index2) < 5:
                 continue
@@ -846,11 +851,15 @@ def estimate_ps_dt_dp_robust(pressure, st_sel, et_sel, samplingFreq=20, resoluti
         dt_dp = 1 / (dp_dt - 1e-3)
 
         X = pressure_hat_sel[1:][mask][::-1]
+        sort_idx = np.argsort(X)
+        X = X[sort_idx]
+
         X_range = (np.max(X) - np.min(X))
         X_min = np.min(X)
         X_norm = (X - X_min) / X_range
 
         y = dt_dp[mask][::-1]
+        y = y[sort_idx]
         y_range = np.max(y) - np.min(y)
         y_min = np.min(y)
         y_norm = (y - y_min) / y_range
