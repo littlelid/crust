@@ -27,7 +27,7 @@ class Drill(models.Model):
     measureUnit = models.CharField(max_length=50, default='')
     measurePrincipal = models.CharField(max_length=50, default='')
 
-    measureDate = models.DateField(default=datetime.date.today)
+    measureDate = models.DateField(default=datetime.date.today, blank=True)
 
     max_deep = models.CharField(max_length=50, default='')
 
@@ -67,8 +67,6 @@ class Calculation(models.Model):
     stress_type = models.CharField(max_length=20)  # pb, pr, ps
 
     method = models.CharField(max_length=20)  # 1,2,3,4
-
-
     time = models.DateTimeField(auto_now=False, auto_now_add=False)  # 采集时间
 
     start = models.CharField(max_length=20)

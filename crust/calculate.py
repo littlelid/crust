@@ -8,6 +8,26 @@ from sklearn.linear_model import HuberRegressor
 
 from scipy.ndimage.filters import uniform_filter1d
 
+
+
+def fit_main_force(X, y):
+
+    X_range = (np.max(X) - np.min(X))
+    X_min = np.min(X)
+    X_norm = (X - X_min) / X_range
+
+    y_range = (np.max(y) - np.min(y))
+    y_min = np.min(y)
+    y_norm = (y - y_min) / y_range
+
+
+
+    regressor = HuberRegressor()
+
+    regressor.fit(X_norm, y_norm)
+
+
+
 def estimate_pb(pressure, st_sel, et_sel):
 
     try:
@@ -36,6 +56,9 @@ def estimate_pb(pressure, st_sel, et_sel):
         return None
 
     return res
+
+
+
 
 def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
 

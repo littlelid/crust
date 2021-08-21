@@ -37,6 +37,9 @@ urlpatterns = [
     path('drill/<int:drill_id>/<str:deep>/<str:data_type>/ps', views.calculate_ps, name='calculate_ps'),
 
 
+    path('drill/<int:drill_id>/<str:data_type>/main_force', views.calculate_main_force, name='calculate_main_force'),
+
+
 
     path('drill/count', views.drill_count, name='drill_count'),
 

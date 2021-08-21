@@ -12,16 +12,16 @@ from django.http import HttpResponse
 from scipy.ndimage.filters import uniform_filter1d
 
 from django.http.multipartparser import MultiPartParser
-
+import traceback
 import os, datetime
 import numpy as np
 from django.forms.models import model_to_dict
 
-from .utils import save_downWell, save_upWell
+from .utils import save_downWell, save_upWell, isfloat
 from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp, estimate_ps_dp_dt_robust, estimate_ps_dt_dp_robust
 
 from scipy.ndimage.filters import uniform_filter1d
-
+from sklearn.linear_model import HuberRegressor
 
 import json, time
 
@@ -405,6 +405,7 @@ def record(request, drill_id, deep=None, data_type=None):
             num_objs = len(objs)
 
             if(num_objs == 0):
+
                 res['message'] += ": no record"
                 res['status'] = 'fail'
             else:
@@ -423,7 +424,7 @@ def record(request, drill_id, deep=None, data_type=None):
 
             deep = params['deep']
             samplingFreq = params.get('samplingFreq')
-
+            data_type = params.get('data_type')
 
             drill = Drill.objects.get(pk=drill_id)
             #print(drill)
@@ -433,20 +434,22 @@ def record(request, drill_id, deep=None, data_type=None):
 
             objs = Record.objects.filter(drill_id=drill_id, deep=deep)
 
-            if len(objs) > 0:
+            if len(objs) > 0:   # update drill
                 if(samplingFreq is None or samplingFreq == ''):
-                    res['message'] = "Error:  deep %s already exists for Drill %s and samplingFreq is null (To update samplingFreq, please provide samplingFreq)" % (deep, drill_id)  # "Error: " + "deep " + deep + ' '
-                    res['status'] = 'fail'
+                    raise Exception( "Error:  deep %s already exists for Drill %s and samplingFreq is null (To update samplingFreq, please provide samplingFreq)" % (deep, drill_id))
+                    #res['message'] = "Error:  deep %s already exists for Drill %s and samplingFreq is null (To update samplingFreq, please provide samplingFreq)" % (deep, drill_id)  # "Error: " + "deep " + deep + ' '
+                    #res['status'] = 'fail'
                 else:
                     assert len(objs) == 2, "Multiple Records for deep %s." % deep
                     for obj in objs:
-                        obj.samplingFreq = samplingFreq
-                        obj.save()
+                        if data_type is None or obj.data_type == data_type:
+                            obj.samplingFreq = samplingFreq
+                            obj.save()
 
-                    res['message'] = "update samplingFreq of deep %s for Drill %s (now = %s)" % (deep, drill_id, samplingFreq)  # "Error: " + "deep " + deep + ' '
+                    res['message'] = "update samplingFreq of deep %s for Drill %s %s (now = %s)" % (deep, drill_id, data_type, samplingFreq)  # "Error: " + "deep " + deep + ' '
                     res['status'] = 'success'
 
-            else:
+            else:  # add deep
                 now = datetime.datetime.now()
                 for data_type in ['upWell', 'downWell']:
                     samplingFreq2 = 20 if (samplingFreq is None or samplingFreq == '') else samplingFreq
@@ -609,22 +612,30 @@ def pressure(request, drill_id, deep, data_type):
                     data['axisX'] = axisX.tolist()
 
                     fields = ['upStress', 'injectFlow', 'backFlow', 'inject', 'back']
-                    print("xxx")
+
                     for field in fields:
+                        broken = False
+
+                        for obj in objs:
+                            if not obj[field].isnumeric():
+                                broken = True
+                                break
 
                         raw = [obj[field] for obj in objs]
-                        raw = np.array(raw, dtype=np.float16).tolist()
 
+                        if not broken:
+                            raw = np.array(raw, dtype=np.float16).tolist()
 
-                        if len(raw) <= samplingFreq or samplingFreq <=1:
+                        if len(raw) <= samplingFreq or samplingFreq <= 1 or broken:
                             raw_smooth = []
                         else:
-                            #raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
-
+                            # raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
                             raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
 
                         data[field] = raw  # [ obj[field] for obj in objs]
                         data[field + '_smooth'] = raw_smooth
+
+
 
                     #print(data)
                     #print(data.keys())
@@ -684,6 +695,7 @@ def pressure(request, drill_id, deep, data_type):
                 #res['message'] = 'get'
 
         except Exception as e:
+                traceback.print_exc()
                 res['message'] = "Error: " + str(e)
                 res['status'] = 'fail'
 
@@ -827,5 +839,113 @@ def calculate_ps(request, drill_id, deep, data_type):
     res['data'] = est
 
     logger.info(res['status'] + ' ' + res['message'])
+
+    return JsonResponse(res)
+
+
+def calculate_main_force(request, drill_id, data_type):
+    logger.info(request.method + ' ' + request.path_info)
+    res = {
+        'data': None,
+        'message': 'record',
+        'status':  'success',
+    }
+
+
+    try:
+        drills = Drill.objects.filter(pk=drill_id)
+        if len(drills) == 0:
+            raise Exception("Drill %s not exists" % drill_id)
+        drill = drills[0]
+
+        rockAvgCapacity = 26.5 if not isfloat(drill.rockAvgCapacity) else float(drill.rockAvgCapacity)
+        liquidCapacity  = 10 if not isfloat(drill.liquidCapacity) else float(drill.liquidCapacity)
+        staticWaterLevel = float(drill.staticWaterLevel)
+        print(rockAvgCapacity, liquidCapacity, staticWaterLevel)
+        records = Record.objects.filter(drill_id=drill_id, data_type=data_type)
+
+        S_Hs = []
+        S_hs = []
+
+        deeps_S_H = []
+        deeps_S_h = []
+
+        for record in records:
+            deep = float(record.deep)
+
+            P_H = 0.001 * deep * liquidCapacity
+            P_0 = 0.001 * (deep - staticWaterLevel) * liquidCapacity
+            S_v = 0.001 * rockAvgCapacity * deep
+
+
+            P_r_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="pr", method=1).order_by('-time')
+            if len(P_r_objs) == 0:
+                P_r = None
+            else:
+                P_r = float(P_r_objs[0].stress)
+
+            P_s_list = []
+            for method in [1, 2, 3, 4]:
+                P_s_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="ps", method=method).order_by('-time')
+                if len(P_r_objs) > 0:
+                    P_s_list.append(float(P_s_objs[0].stress))
+            if len(P_s_list) == 0:
+                P_s = None
+            else:
+                P_s = np.mean(P_s_list)
+
+
+            if (P_r is not None) and (P_s is not None):
+                print(P_s, P_r, P_0)
+                S_H = 3 * P_s - P_r - P_0
+
+                deeps_S_H.append(deep)
+                S_Hs.append(S_H)
+
+            if (P_s is not None):
+
+                S_h = P_s
+
+                deeps_S_h.append(deep)
+                S_hs.append(S_h)
+
+
+
+
+
+
+
+
+        lines = [
+            {
+                "name": "S_H",
+                "type": "scatter",
+                "markerType": "circle",
+                "showInLegend": True,
+                "dataPoints": {'x': deeps_S_H, 'y': S_Hs},
+            },
+            {
+                "name": "S_h",
+                "type": "scatter",
+                "markerType": "circle",
+                "showInLegend": True,
+                "dataPoints": {'x': deeps_S_h, 'y': S_hs},
+            },
+            #{
+            #    "name": "the third stage",
+            #    "type": "line",
+            #    "showInLegend": True,
+            #    "dataPoints": {"x": X1_plot.tolist(), "y": y1_plot.tolist()},
+            #},
+        ]
+
+        res['data'] = {
+            'lines': lines,
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+        res['message'] = "Error: " + str(e)
+        res['status'] = 'fail'
 
     return JsonResponse(res)
