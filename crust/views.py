@@ -119,16 +119,17 @@ def drill(request, drill_id=None):
             records = Record.objects.filter(drill_id=obj['pk'])
 
             deeps = []
-            samplingFreqs = []
+            samplingFreqs = {}
             for record in records: #每个upWell 和 downWell都有一个record
-                if record.deep not in deeps:
-                    deeps.append(record.deep)
-                    samplingFreqs.append(record.samplingFreq)
+                if record.deep not in samplingFreqs:
+                    samplingFreqs[record.deep]={}
+                samplingFreqs[record.deep][record.data_type] = record.samplingFreq
 
             #samplingFreqs = [ record.samplingFreq for record in records]
+            deeps = list(samplingFreqs.keys())
             idxs = np.argsort([float(deep) for deep in deeps])
             deeps = [ deeps[idx] for idx in idxs]
-            samplingFreqs = [samplingFreqs[idx] for idx in idxs]
+            samplingFreqs = [samplingFreqs[deep] for deep in deeps]
 
             obj['fields']['deep'] = deeps
             obj['fields']['samplingFreq'] = samplingFreqs
@@ -879,7 +880,9 @@ def calculate_main_force(request, drill_id, data_type):
 
 
             P_r_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="pr", method=1).order_by('-time')
-            if len(P_r_objs) == 0:
+            if len(P_r_objs) == 0 :
+                P_r = None
+            elif not isfloat(P_r_objs[0].stress):
                 P_r = None
             else:
                 P_r = float(P_r_objs[0].stress)
@@ -887,7 +890,7 @@ def calculate_main_force(request, drill_id, data_type):
             P_s_list = []
             for method in [1, 2, 3, 4]:
                 P_s_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="ps", method=method).order_by('-time')
-                if len(P_r_objs) > 0:
+                if len(P_r_objs) > 0 and isfloat(P_s_objs[0].stress):
                     P_s_list.append(float(P_s_objs[0].stress))
             if len(P_s_list) == 0:
                 P_s = None
