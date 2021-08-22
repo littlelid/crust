@@ -1052,6 +1052,7 @@ def calculate_main_force(request, drill_id, data_type):
             "lines_main_force": lines_main_force,
             "lines_K_HV": lines_K_HV,
             "lines_K_Hh": lines_K_Hh,
+            "table": tables
         }
 
     except Exception as e:
