@@ -989,13 +989,13 @@ def calculate_main_force(request, drill_id, data_type):
                 "dataPoints": {'x': deeps_S_h, 'y': S_hs},
             },
             {
-                "name": "S_H = %sH + %s" % (k_S_H, b_S_H),
+                "name": "S_H = %sH + %s" % (np.round(k_S_H, 4), np.round(b_S_H, 4)),
                 "type": "line",
                 "showInLegend": True,
                 "dataPoints": {'x': X_S_H, 'y': y_S_H},
             },
             {
-                "name": "S_h = %sH + %s" % (k_S_h, b_S_h),
+                "name": "S_h = %sH + %s" % (np.round(k_S_h,4), np.round(b_S_h) ),
                 "type": "line",
                 "showInLegend": True,
                 "dataPoints": {'x': X_S_h, 'y': y_S_h},
@@ -1019,7 +1019,7 @@ def calculate_main_force(request, drill_id, data_type):
                 "dataPoints": {'x': deeps_S_H_div_S_v, 'y': S_H_div_S_v},
             },
             {
-                "name": "K_HV = %s/H + %s" % (k_S_H_div_S_v, b_S_H_div_S_v),
+                "name": "K_HV = %s/H + %s" % (np.round(k_S_H_div_S_v,4), np.round(b_S_H_div_S_v,4) ),
                 "type": "line",
                 "showInLegend": True,
                 "dataPoints": {'x': X_S_H_div_S_v, 'y': y_S_H_div_S_v},
@@ -1037,7 +1037,7 @@ def calculate_main_force(request, drill_id, data_type):
                 "dataPoints": {'x': deeps_S_H_div_S_h, 'y': S_H_div_S_h},
             },
             {
-                "name": "K_Hh = %sH + %s" % (k_S_H_div_S_h, b_S_H_div_S_h),
+                "name": "K_Hh = %sH + %s" % (np.round(k_S_H_div_S_h,4), np.round(b_S_H_div_S_h,4) ),
                 "type": "line",
                 "showInLegend": True,
                 "dataPoints": {'x': X_S_H_div_S_h, 'y': y_S_H_div_S_h},
