@@ -18,7 +18,8 @@ import numpy as np
 from django.forms.models import model_to_dict
 
 from .utils import save_downWell, save_upWell, isfloat
-from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp, estimate_ps_dp_dt_robust, estimate_ps_dt_dp_robust
+from .calculate import estimate_pb, estimate_pr, estimate_ps_tangent, estimate_ps_muskat, estimate_ps_dp_dt, estimate_ps_dt_dp, estimate_ps_dp_dt_robust, estimate_ps_dt_dp_robust, fit_main_force, fit_S_H_div_S_v, fit_S_H_div_S_h
+
 
 from scipy.ndimage.filters import uniform_filter1d
 from sklearn.linear_model import HuberRegressor
@@ -848,7 +849,7 @@ def calculate_main_force(request, drill_id, data_type):
     logger.info(request.method + ' ' + request.path_info)
     res = {
         'data': None,
-        'message': 'record',
+        'message': 'main force',
         'status':  'success',
     }
 
@@ -868,36 +869,52 @@ def calculate_main_force(request, drill_id, data_type):
         S_Hs = []
         S_hs = []
 
+        S_H_div_S_h = []
+        S_H_div_S_v = []
+
         deeps_S_H = []
         deeps_S_h = []
 
+        deeps_S_H_div_S_h = []
+        deeps_S_H_div_S_v = []
+
+
+        tables = []
         for record in records:
             deep = float(record.deep)
 
             P_H = 0.001 * deep * liquidCapacity
+
             P_0 = 0.001 * (deep - staticWaterLevel) * liquidCapacity
+            if P_0 <= 0:
+                P_0 = 0
+
             S_v = 0.001 * rockAvgCapacity * deep
 
-
+            P_r = None
             P_r_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="pr", method=1).order_by('-time')
-            if len(P_r_objs) == 0 :
-                P_r = None
-            elif not isfloat(P_r_objs[0].stress):
-                P_r = None
-            else:
+            if len(P_r_objs) > 0 and  isfloat(P_r_objs[0].stress):
                 P_r = float(P_r_objs[0].stress)
 
+            P_b = None
+            P_b_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="pb", method=1).order_by('-time')
+            if len(P_b_objs) > 0 and isfloat(P_b_objs[0].stress):
+                P_b = float(P_b_objs[0].stress)
+
+            P_s = None
             P_s_list = []
             for method in [1, 2, 3, 4]:
                 P_s_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="ps", method=method).order_by('-time')
                 if len(P_r_objs) > 0 and isfloat(P_s_objs[0].stress):
                     P_s_list.append(float(P_s_objs[0].stress))
-            if len(P_s_list) == 0:
-                P_s = None
-            else:
+            if len(P_s_list) > 0:
                 P_s = np.mean(P_s_list)
 
+            T = None
+            if (P_b is not None) and (P_r is not None):
+                T = P_b - P_r
 
+            S_H = None
             if (P_r is not None) and (P_s is not None):
                 print(P_s, P_r, P_0)
                 S_H = 3 * P_s - P_r - P_0
@@ -905,21 +922,58 @@ def calculate_main_force(request, drill_id, data_type):
                 deeps_S_H.append(deep)
                 S_Hs.append(S_H)
 
+            S_h = None
             if (P_s is not None):
-
                 S_h = P_s
 
                 deeps_S_h.append(deep)
                 S_hs.append(S_h)
 
+            #deeps_S_H_div_S_h = []
+            #deeps_S_H_div_S_v = []
+            if (S_H is not None) and (S_h is not None):
+                deeps_S_H_div_S_h.append(deep)
+                S_H_div_S_h.append(S_H / (S_h + 1e-5))
+
+            if (S_H is not None) and (S_v is not None):
+                deeps_S_H_div_S_v.append(deep)
+                S_H_div_S_v.append(S_H / (S_v + 1e-5))
+
+            tables.append(
+                {
+                    "deep": deep,
+                    "P_H":  P_H,
+                    "P_0":  P_0,
+                    "P_b":  P_b,
+                    "P_r":  P_r,
+                    "P_s":  P_s,
+                    "T":    T,
+                    "S_H":  S_H,
+                    "S_h":  S_h,
+                    "S_v":  S_v,
+                }
+            )
+
+        #
+        # deeps_S_H =  [
+        #     71.8,
+        #     93.8,
+        #     127.8,
+        #     151.4,
+        #     168.9,
+        # ]
+        #
+        # S_Hs = [2.3775,
+        #                 3.03,
+        #                 2.415,
+        #                 3.4875,
+        #                 3.6475,]
 
 
+        k_S_H, b_S_H, X_S_H, y_S_H = fit_main_force(deeps_S_H, S_Hs)
+        k_S_h, b_S_h, X_S_h, y_S_h = fit_main_force(deeps_S_h, S_hs)
 
-
-
-
-
-        lines = [
+        lines_main_force = [
             {
                 "name": "S_H",
                 "type": "scatter",
@@ -934,6 +988,18 @@ def calculate_main_force(request, drill_id, data_type):
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_h, 'y': S_hs},
             },
+            {
+                "name": "S_H = %sH + %s" % (k_S_H, b_S_H),
+                "type": "line",
+                "showInLegend": True,
+                "dataPoints": {'x': X_S_H, 'y': y_S_H},
+            },
+            {
+                "name": "S_h = %sH + %s" % (k_S_h, b_S_h),
+                "type": "line",
+                "showInLegend": True,
+                "dataPoints": {'x': X_S_h, 'y': y_S_h},
+            },
             #{
             #    "name": "the third stage",
             #    "type": "line",
@@ -942,8 +1008,50 @@ def calculate_main_force(request, drill_id, data_type):
             #},
         ]
 
+        k_S_H_div_S_v, b_S_H_div_S_v, X_S_H_div_S_v, y_S_H_div_S_v = fit_S_H_div_S_v(deeps_S_H_div_S_v, S_H_div_S_v)
+
+        lines_K_HV = [
+            {
+                "name": "K_HV",
+                "type": "scatter",
+                "markerType": "circle",
+                "showInLegend": True,
+                "dataPoints": {'x': deeps_S_H_div_S_v, 'y': S_H_div_S_v},
+            },
+            {
+                "name": "K_HV = %s/H + %s" % (k_S_H_div_S_v, b_S_H_div_S_v),
+                "type": "line",
+                "showInLegend": True,
+                "dataPoints": {'x': X_S_H_div_S_v, 'y': y_S_H_div_S_v},
+            },
+        ]
+
+        k_S_H_div_S_h, b_S_H_div_S_h, X_S_H_div_S_h, y_S_H_div_S_h = fit_S_H_div_S_h(deeps_S_H_div_S_h, S_H_div_S_h)
+
+        lines_K_Hh = [
+            {
+                "name": "K_Hh",
+                "type": "scatter",
+                "markerType": "circle",
+                "showInLegend": True,
+                "dataPoints": {'x': deeps_S_H_div_S_h, 'y': S_H_div_S_h},
+            },
+            {
+                "name": "K_Hh = %sH + %s" % (k_S_H_div_S_h, b_S_H_div_S_h),
+                "type": "line",
+                "showInLegend": True,
+                "dataPoints": {'x': X_S_H_div_S_h, 'y': y_S_H_div_S_h},
+            },
+        ]
+
+        # print(np.array(X_S_H)*k_S_H + b_S_H)
+        # print(k_S_H, b_S_H, X_S_H, y_S_H)
+
+
         res['data'] = {
-            'lines': lines,
+            "lines_main_force": lines_main_force,
+            "lines_K_HV": lines_K_HV,
+            "lines_K_Hh": lines_K_Hh,
         }
 
     except Exception as e:

@@ -10,21 +10,58 @@ from scipy.ndimage.filters import uniform_filter1d
 
 
 
-def fit_main_force(X, y):
+def fit_line_robust(X, y):
+    X = np.array(X)
+    y = np.array(y)
 
     X_range = (np.max(X) - np.min(X))
     X_min = np.min(X)
     X_norm = (X - X_min) / X_range
+    X_norm = X_norm.reshape(-1, 1)
 
     y_range = (np.max(y) - np.min(y))
     y_min = np.min(y)
     y_norm = (y - y_min) / y_range
 
-
-
     regressor = HuberRegressor()
 
     regressor.fit(X_norm, y_norm)
+
+    X_plot = np.arange(-0.1, 1.1)
+    y_plot = regressor.predict(X_plot.reshape(-1, 1))
+
+    X_plot = X_plot * X_range + X_min
+    y_plot = y_plot * y_range + y_min
+
+    k_norm = regressor.coef_[0]
+    b_norm = regressor.intercept_
+
+    k = (y_range / X_range) * k_norm
+    b = y_range * b_norm + y_min - k * X_min
+
+    return k, b, X_plot.tolist(), y_plot.tolist()
+
+def fit_main_force(deeps, stress):
+    return fit_line_robust(deeps, stress)
+
+def fit_S_H_div_S_v(deeps, S_H_div_S_v):
+    #y = k/H + b
+    deeps = np.array(deeps)
+    X = 1./ (deeps + 1e-5)
+    y = np.array(S_H_div_S_v)
+
+    k, b, _, _ = fit_line_robust(X, y)
+
+    deeps_plot = np.arange(np.min(deeps)*0.9, np.max(deeps)*1.1)
+    K_HV = k * (1. / (deeps_plot+1e-5)) + b
+
+    return k, b, deeps_plot.tolist(), K_HV.tolist()
+
+def fit_S_H_div_S_h(deeps, S_H_div_S_h):
+    return fit_line_robust(deeps, S_H_div_S_h)
+
+
+
 
 
 
