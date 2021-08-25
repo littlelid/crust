@@ -619,7 +619,7 @@ def pressure(request, drill_id, deep, data_type):
                         broken = False
 
                         for obj in objs:
-                            if not obj[field].isnumeric():
+                            if not isfloat(obj[field]):
                                 broken = True
                                 break
 
@@ -675,7 +675,8 @@ def pressure(request, drill_id, deep, data_type):
                         broken = False
 
                         for obj in objs:
-                            if not obj[field].isnumeric():
+                            if not isfloat(obj[field]):
+                                print(obj[field])
                                 broken = True
                                 break
 
@@ -685,6 +686,7 @@ def pressure(request, drill_id, deep, data_type):
                             raw = np.array(raw, dtype=np.float16).tolist()
 
                         if len(raw) <= samplingFreq or samplingFreq <=1 or broken:
+                            print(field, "Skip Smooth")
                             raw_smooth = []
                         else:
                             #raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
