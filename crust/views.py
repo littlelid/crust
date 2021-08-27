@@ -630,7 +630,7 @@ def pressure(request, drill_id, deep, data_type, action=None):
 
                 if action == "smooth":
                     smooth_cnt += 1
-                elif action == "restore":
+                elif action == "smooth_restore":
                     smooth_cnt = 1
 
                 print("smooth cnt:", smooth_cnt)
