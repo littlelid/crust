@@ -14,7 +14,7 @@ from scipy.ndimage.filters import uniform_filter1d
 from django.http.multipartparser import MultiPartParser
 import traceback
 import os, datetime
-from dateutil import parser
+#from dateutil import parser
 
 import numpy as np
 from django.forms.models import model_to_dict
@@ -727,7 +727,7 @@ def pressure(request, drill_id, deep, data_type, action=None):
                             objs = p.page(pageCur).object_list
                         else:
                             objs = []
-                    
+
                     if (st_sel is not None and et_sel is not None):
                         objs = objs[st_sel: et_sel]
 
