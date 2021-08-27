@@ -14,6 +14,8 @@ from scipy.ndimage.filters import uniform_filter1d
 from django.http.multipartparser import MultiPartParser
 import traceback
 import os, datetime
+from dateutil import parser
+
 import numpy as np
 from django.forms.models import model_to_dict
 
@@ -27,6 +29,8 @@ from sklearn.linear_model import HuberRegressor
 import json, time
 
 import logging
+#from django.utils import timezone
+import pytz
 
 # 实例化logging对象,并以当前文件的名字作为logger实例的名字
 logger = logging.getLogger(__name__)
@@ -44,6 +48,7 @@ def index(request):
 
 @csrf_exempt
 def drill_count(request):
+    #print(timezone.localtime(timezone.now()))
     logger.info(request.method + ' ' + request.path_info)
 
     res = {
@@ -263,8 +268,36 @@ def calculation(request, drill_id, deep, data_type):
                         serialized_obj = serializers.serialize('json', objs)
                         objs = json.loads(serialized_obj)
 
+
+
+                        cn_zone = pytz.timezone('Asia/Shanghai')
                         for obj in objs:
                             obj['fields']['id'] = obj['pk']
+
+                            obj['fields']['time'] = altertimestamp_tmp(obj['fields']['time'])
+                            # timestr = obj['fields']['time']
+                            # timestr = timestr.replace("T", " ")
+                            # timestr = timestr.replace("Z", " ")
+                            # timestr = timestr.split(".")[0]
+                            #
+                            # dt = dt + datetime.timedelta(hours=8)
+                            #
+                            # obj['fields']['time'] = str(dt)
+                            # dt = datetime.datetime.strptime(timestr, '%Y-%m-%d %H:%M:%S')
+
+                            #new_dt = cn_zone.localize(dt)
+                            #dt.astimezone(cn_zone)
+                            #print(dt, new_dt, new_dt.strftime('%Y-%m-%d %H:%M:%S'))
+
+                            #print(new_dt, new_dt.strftime('%Y-%m-%d %H:%M:%S'))
+
+                            #print(dt.tzinfo)
+                            #dt.astimezone(pytz.timezone("America/Los_Angeles"))
+                            #print(dt.tzinfo)
+                            #timezone = pytz.timezone("America/Los_Angeles")
+                            #dt_aware = timezone.localize(dt)
+                            #print(dt_aware.tzinfo)
+
 
                         data[t].extend(objs)
 
@@ -287,6 +320,9 @@ def calculation(request, drill_id, deep, data_type):
                 for obj in objs:
                     obj['fields']['id'] = obj['pk']
 
+                    obj['fields']['time'] = altertimestamp_tmp(obj['fields']['time'])
+
+
                 res['data'] = objs
                 res['message'] = "get %s calculation" % len(objs)
                 res['status'] = 'success' if len(objs) > 0 else 'fail'
@@ -306,7 +342,12 @@ def calculation(request, drill_id, deep, data_type):
             logger.info(params)
             print(params)
 
-            params['time'] = datetime.datetime.now()
+            #now = timezone.now()
+            now = datetime.datetime.now()
+            print(now)
+            #now = timezone.localtime(now)
+            print(now)
+            params['time'] = now
             params['record_id'] = record_id
 
             obj = Calculation(**params)
@@ -325,6 +366,15 @@ def calculation(request, drill_id, deep, data_type):
 
     return JsonResponse(res)
 
+def altertimestamp_tmp(timestr):
+    timestr = timestr.replace("T", " ")
+    timestr = timestr.replace("Z", " ")
+    timestr = timestr.split(".")[0]
+
+    dt = datetime.datetime.strptime(timestr, '%Y-%m-%d %H:%M:%S')
+    dt = dt + datetime.timedelta(hours=8)
+
+    return str(dt)
 
 @csrf_exempt
 def fileUpload(request, drill_id, deep, data_type):
@@ -509,7 +559,7 @@ def record_count(request, drill_id, deep, data_type):
     return JsonResponse(res)
 
 @csrf_exempt
-def pressure(request, drill_id, deep, data_type):
+def pressure(request, drill_id, deep, data_type, action=None):
     print(request, drill_id, deep, data_type)
 
     if request.method == "DELETE":
@@ -576,6 +626,17 @@ def pressure(request, drill_id, deep, data_type):
                 print("1111")
                 record_id = objs[0].id
                 samplingFreq = int(objs[0].samplingFreq)
+                smooth_cnt = int(objs[0].smooth_cnt)
+
+                if action == "smooth":
+                    smooth_cnt += 1
+                elif action == "restore":
+                    smooth_cnt = 1
+
+                print("smooth cnt:", smooth_cnt)
+                objs[0].smooth_cnt = str(smooth_cnt)
+                objs[0].save()
+
                 if samplingFreq < 0:
                     samplingFreq = 20
 
@@ -586,10 +647,17 @@ def pressure(request, drill_id, deep, data_type):
                 pageCur = request.GET.get('pageCur')
                 pageSize = request.GET.get('pageSize')
 
+                st_sel = request.GET.get('start')
+                et_sel = request.GET.get('end')
+
                 if (pageCur is not None and pageSize is not None):
                     pageCur = int(pageCur)
                     pageSize = int(pageSize)
                     print(pageSize, pageCur)
+
+                if (st_sel is not None and et_sel is not None):
+                    st_sel = int(st_sel)
+                    et_sel = int(et_sel)
 
                 if data_type == 'upWell':
                     objs = Drill_Upwell_Data.objects.filter(record_id__exact=record_id).order_by('index')
@@ -604,6 +672,9 @@ def pressure(request, drill_id, deep, data_type):
                             objs = p.page(pageCur).object_list
                         else:
                             objs = []
+
+                    if (st_sel is not None and et_sel is not None):
+                        objs = objs[st_sel: et_sel]
 
                     objs = list(objs)
                     objs = [model_to_dict(obj) for obj in objs]
@@ -632,7 +703,11 @@ def pressure(request, drill_id, deep, data_type):
                             raw_smooth = []
                         else:
                             # raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
-                            raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
+                            raw_smooth = uniform_filter1d(raw, size=samplingFreq)
+                            while(smooth_cnt > 1):
+                                raw_smooth = uniform_filter1d(raw_smooth, size=samplingFreq)
+                                smooth_cnt -= 1
+                            raw_smooth = raw_smooth.tolist()
 
                         data[field] = raw  # [ obj[field] for obj in objs]
                         data[field + '_smooth'] = raw_smooth
@@ -652,7 +727,9 @@ def pressure(request, drill_id, deep, data_type):
                             objs = p.page(pageCur).object_list
                         else:
                             objs = []
-
+                    
+                    if (st_sel is not None and et_sel is not None):
+                        objs = objs[st_sel: et_sel]
 
                     objs = list(objs)
 
@@ -690,7 +767,11 @@ def pressure(request, drill_id, deep, data_type):
                             raw_smooth = []
                         else:
                             #raw_smooth = savgol_filter(raw, samplingFreq, 1).tolist()
-                            raw_smooth = uniform_filter1d(raw, size=samplingFreq).tolist()
+                            raw_smooth = uniform_filter1d(raw, size=samplingFreq)
+                            while (smooth_cnt > 1):
+                                raw_smooth = uniform_filter1d(raw_smooth, size=samplingFreq)
+                                smooth_cnt -= 1
+                            raw_smooth = raw_smooth.tolist()
 
                         data[field] = raw  # [ obj[field] for obj in objs]
                         data[field + '_smooth'] = raw_smooth

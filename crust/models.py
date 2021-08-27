@@ -1,6 +1,7 @@
 from django.db import models
 import datetime
 # Create your models here.
+from django.core import serializers
 
 import logging
 
@@ -55,8 +56,11 @@ class Record(models.Model):
     data_type = models.CharField(max_length=20)
     deep = models.CharField(max_length=50, default='')
     samplingFreq = models.CharField(max_length=50, default='')
+    smooth_cnt = models.CharField(max_length=50, default='1')
 
     drill = models.ForeignKey('Drill', on_delete=models.CASCADE)
+
+
 
 class Calculation(models.Model):
 
@@ -74,7 +78,10 @@ class Calculation(models.Model):
 
     record = models.ForeignKey('Record', on_delete=models.CASCADE)
 
-
+#class AccountSerializer(serializers.ModelSerializer):
+#    class Meta:
+#        model = Calculation
+#        fields = '__all__'
 
 
 
