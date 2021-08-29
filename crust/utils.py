@@ -3,11 +3,14 @@ import xlrd, csv
 from .models import Drill, Drill_Upwell_Data, Drill_Downwell_Data
 import numpy as np
 from scipy import optimize
-
+import math
 def isfloat(value):
   try:
-    float(value)
-    return True
+    v = float(value)
+    if math.isnan(v) or math.isinf(v):
+        return False
+    else:
+        return True
   except ValueError:
     return False
 
