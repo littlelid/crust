@@ -68,13 +68,13 @@ class Calculation(models.Model):
 
     stress = models.CharField(max_length=20)
 
-    stress_type = models.CharField(max_length=20)  # pb, pr, ps
+    stress_type = models.CharField(max_length=20)  # pb, pr, ps  orientation
 
     method = models.CharField(max_length=20)  # 1,2,3,4
     time = models.DateTimeField(auto_now=False, auto_now_add=False)  # 采集时间
 
-    start = models.CharField(max_length=20)
-    end = models.CharField(max_length=20)
+    start = models.CharField(max_length=20, default='')
+    end = models.CharField(max_length=20, default='')
 
     record = models.ForeignKey('Record', on_delete=models.CASCADE)
 

@@ -1022,6 +1022,11 @@ def calculate_main_force(request, drill_id, data_type):
                 deeps_S_H_div_S_v.append(deep)
                 S_H_div_S_v.append(S_H / (S_v + 1e-5))
 
+            Orientation = None
+            Orientation_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="orientation", method=1).order_by('-time')
+            if len(Orientation_objs) > 0 and isfloat(Orientation_objs[0].stress):
+                Orientation = float(Orientation_objs[0].stress)
+
             tables.append(
                 {
                     "deep": deep,
@@ -1034,6 +1039,7 @@ def calculate_main_force(request, drill_id, data_type):
                     "S_H":  S_H,
                     "S_h":  S_h,
                     "S_v":  S_v,
+                    "Orientation": Orientation
                 }
             )
 
