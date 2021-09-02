@@ -282,6 +282,7 @@ def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
         cut_idxs = np.where(y_pred < np.min(y_target) )
         if len(cut_idxs) > 0:
             cut_idx = cut_idxs[0][0]
+            cut_idx = 30 if cut_idx < 30 else cut_idx
         else:
             cut_idx = -1
 
