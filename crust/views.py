@@ -997,10 +997,15 @@ def calculate_main_force(request, drill_id, data_type):
             if (P_b is not None) and (P_r is not None):
                 T = P_b - P_r
 
+                if data_type == 'upWell':
+                    T += 0
+
             S_H = None
             if (P_r is not None) and (P_s is not None):
                 print(P_s, P_r, P_0)
                 S_H = 3 * P_s - P_r - P_0
+                if data_type == 'upWell':
+                    S_H += 3*P_H - P_H
 
                 deeps_S_H.append(deep)
                 S_Hs.append(S_H)
@@ -1008,7 +1013,9 @@ def calculate_main_force(request, drill_id, data_type):
             S_h = None
             if (P_s is not None):
                 S_h = P_s
-
+                if data_type == 'upWell':
+                    S_h += P_H
+                    
                 deeps_S_h.append(deep)
                 S_hs.append(S_h)
 
