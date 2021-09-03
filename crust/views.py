@@ -1057,11 +1057,6 @@ def calculate_main_force(request, drill_id, data_type):
         #                 2.415,
         #                 3.4875,
         #                 3.6475,]
-
-
-        k_S_H, b_S_H, X_S_H, y_S_H = fit_main_force(deeps_S_H, S_Hs)
-        k_S_h, b_S_h, X_S_h, y_S_h = fit_main_force(deeps_S_h, S_hs)
-
         lines_main_force = [
             {
                 "name": "S_H",
@@ -1077,27 +1072,29 @@ def calculate_main_force(request, drill_id, data_type):
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_h, 'y': S_hs},
             },
-            {
-                "name": "S_H = %sH + %s" % (np.round(k_S_H, 4), np.round(b_S_H, 4)),
-                "type": "line",
-                "showInLegend": True,
-                "dataPoints": {'x': X_S_H, 'y': y_S_H},
-            },
-            {
-                "name": "S_h = %sH + %s" % (np.round(k_S_h,4), np.round(b_S_h) ),
-                "type": "line",
-                "showInLegend": True,
-                "dataPoints": {'x': X_S_h, 'y': y_S_h},
-            },
-            #{
-            #    "name": "the third stage",
-            #    "type": "line",
-            #    "showInLegend": True,
-            #    "dataPoints": {"x": X1_plot.tolist(), "y": y1_plot.tolist()},
-            #},
         ]
 
-        k_S_H_div_S_v, b_S_H_div_S_v, X_S_H_div_S_v, y_S_H_div_S_v = fit_S_H_div_S_v(deeps_S_H_div_S_v, S_H_div_S_v)
+        if(len(deeps_S_H) >= 2):
+            k_S_H, b_S_H, X_S_H, y_S_H = fit_main_force(deeps_S_H, S_Hs)
+            lines_main_force.append(
+
+                {
+                    "name": "S_H = %sH + %s" % (np.round(k_S_H, 4), np.round(b_S_H, 4)),
+                    "type": "line",
+                    "showInLegend": True,
+                    "dataPoints": {'x': X_S_H, 'y': y_S_H},
+                },
+            )
+        if(len(deeps_S_h) >= 2 )
+            k_S_h, b_S_h, X_S_h, y_S_h = fit_main_force(deeps_S_h, S_hs)
+            lines_main_force.append(
+                {
+                    "name": "S_h = %sH + %s" % (np.round(k_S_h,4), np.round(b_S_h) ),
+                    "type": "line",
+                    "showInLegend": True,
+                    "dataPoints": {'x': X_S_h, 'y': y_S_h},
+                },
+            )
 
         lines_K_HV = [
             {
@@ -1107,15 +1104,17 @@ def calculate_main_force(request, drill_id, data_type):
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_H_div_S_v, 'y': S_H_div_S_v},
             },
-            {
-                "name": "K_HV = %s/H + %s" % (np.round(k_S_H_div_S_v,4), np.round(b_S_H_div_S_v,4) ),
-                "type": "line",
-                "showInLegend": True,
-                "dataPoints": {'x': X_S_H_div_S_v, 'y': y_S_H_div_S_v},
-            },
         ]
-
-        k_S_H_div_S_h, b_S_H_div_S_h, X_S_H_div_S_h, y_S_H_div_S_h = fit_S_H_div_S_h(deeps_S_H_div_S_h, S_H_div_S_h)
+        if(len(deeps_S_H_div_S_v) >= 2):
+            k_S_H_div_S_v, b_S_H_div_S_v, X_S_H_div_S_v, y_S_H_div_S_v = fit_S_H_div_S_v(deeps_S_H_div_S_v, S_H_div_S_v)
+            lines_K_HV.append(
+                {
+                    "name": "K_HV = %s/H + %s" % (np.round(k_S_H_div_S_v, 4), np.round(b_S_H_div_S_v, 4)),
+                    "type": "line",
+                    "showInLegend": True,
+                    "dataPoints": {'x': X_S_H_div_S_v, 'y': y_S_H_div_S_v},
+                },
+            )
 
         lines_K_Hh = [
             {
@@ -1125,13 +1124,18 @@ def calculate_main_force(request, drill_id, data_type):
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_H_div_S_h, 'y': S_H_div_S_h},
             },
-            {
-                "name": "K_Hh = %sH + %s" % (np.round(k_S_H_div_S_h,4), np.round(b_S_H_div_S_h,4) ),
-                "type": "line",
-                "showInLegend": True,
-                "dataPoints": {'x': X_S_H_div_S_h, 'y': y_S_H_div_S_h},
-            },
         ]
+        if(len(deeps_S_H_div_S_h) >=2):
+            k_S_H_div_S_h, b_S_H_div_S_h, X_S_H_div_S_h, y_S_H_div_S_h = fit_S_H_div_S_h(deeps_S_H_div_S_h, S_H_div_S_h)
+            lines_K_Hh.append(
+                {
+                    "name": "K_Hh = %sH + %s" % (np.round(k_S_H_div_S_h, 4), np.round(b_S_H_div_S_h, 4)),
+                    "type": "line",
+                    "showInLegend": True,
+                    "dataPoints": {'x': X_S_H_div_S_h, 'y': y_S_H_div_S_h},
+                },
+            )
+
 
         # print(np.array(X_S_H)*k_S_H + b_S_H)
         # print(k_S_H, b_S_H, X_S_H, y_S_H)
