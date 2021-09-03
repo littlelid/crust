@@ -1085,7 +1085,7 @@ def calculate_main_force(request, drill_id, data_type):
                     "dataPoints": {'x': X_S_H, 'y': y_S_H},
                 },
             )
-        if(len(deeps_S_h) >= 2 )
+        if(len(deeps_S_h) >= 2 ):
             k_S_h, b_S_h, X_S_h, y_S_h = fit_main_force(deeps_S_h, S_hs)
             lines_main_force.append(
                 {
