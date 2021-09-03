@@ -964,7 +964,7 @@ def calculate_main_force(request, drill_id, data_type):
 
         tables = []
         for record in records:
-            deep = float(record.deep)
+            deep = record.deep
 
             P_H = 0.001 * deep * liquidCapacity
 
