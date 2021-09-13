@@ -1015,7 +1015,7 @@ def calculate_main_force(request, drill_id, data_type):
                 S_h = P_s
                 if data_type == 'upWell':
                     S_h += P_H
-                    
+
                 deeps_S_h.append(deep)
                 S_hs.append(S_h)
 
@@ -1066,14 +1066,14 @@ def calculate_main_force(request, drill_id, data_type):
         #                 3.6475,]
         lines_main_force = [
             {
-                "name": "S_H",
+                "name": "S{sub|H}",
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_H, 'y': S_Hs},
             },
             {
-                "name": "S_h",
+                "name": "S{sub|h}",
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
@@ -1086,7 +1086,7 @@ def calculate_main_force(request, drill_id, data_type):
             lines_main_force.append(
 
                 {
-                    "name": "S_H = %sH + %s" % (np.round(k_S_H, 4), np.round(b_S_H, 4)),
+                    "name": "S{sub|H} = %sH + %s" % (np.round(k_S_H, 4), np.round(b_S_H, 4)),
                     "type": "line",
                     "showInLegend": True,
                     "dataPoints": {'x': X_S_H, 'y': y_S_H},
@@ -1096,7 +1096,7 @@ def calculate_main_force(request, drill_id, data_type):
             k_S_h, b_S_h, X_S_h, y_S_h = fit_main_force(deeps_S_h, S_hs)
             lines_main_force.append(
                 {
-                    "name": "S_h = %sH + %s" % (np.round(k_S_h,4), np.round(b_S_h) ),
+                    "name": "S{sub|h} = %sH + %s" % (np.round(k_S_h,4), np.round(b_S_h) ),
                     "type": "line",
                     "showInLegend": True,
                     "dataPoints": {'x': X_S_h, 'y': y_S_h},
@@ -1105,7 +1105,7 @@ def calculate_main_force(request, drill_id, data_type):
 
         lines_K_HV = [
             {
-                "name": "K_HV",
+                "name": "K{sub|HV}",
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
@@ -1116,7 +1116,8 @@ def calculate_main_force(request, drill_id, data_type):
             k_S_H_div_S_v, b_S_H_div_S_v, X_S_H_div_S_v, y_S_H_div_S_v = fit_S_H_div_S_v(deeps_S_H_div_S_v, S_H_div_S_v)
             lines_K_HV.append(
                 {
-                    "name": "K_HV = %s/H + %s" % (np.round(k_S_H_div_S_v, 4), np.round(b_S_H_div_S_v, 4)),
+                    #"name": "K_HV = %s/H + %s" % (np.round(k_S_H_div_S_v, 4), np.round(b_S_H_div_S_v, 4)),
+                    "name": "K{sub|HV} = %s/H + %s" % (np.round(k_S_H_div_S_v, 4), np.round(b_S_H_div_S_v, 4)),
                     "type": "line",
                     "showInLegend": True,
                     "dataPoints": {'x': X_S_H_div_S_v, 'y': y_S_H_div_S_v},
@@ -1125,7 +1126,8 @@ def calculate_main_force(request, drill_id, data_type):
 
         lines_K_Hh = [
             {
-                "name": "K_Hh",
+                #"name": "K_Hh",
+                "name": "K{sub|Hh}",
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
@@ -1136,7 +1138,8 @@ def calculate_main_force(request, drill_id, data_type):
             k_S_H_div_S_h, b_S_H_div_S_h, X_S_H_div_S_h, y_S_H_div_S_h = fit_S_H_div_S_h(deeps_S_H_div_S_h, S_H_div_S_h)
             lines_K_Hh.append(
                 {
-                    "name": "K_Hh = %sH + %s" % (np.round(k_S_H_div_S_h, 4), np.round(b_S_H_div_S_h, 4)),
+                    #"name": "K_Hh = %sH + %s" % (np.round(k_S_H_div_S_h, 4), np.round(b_S_H_div_S_h, 4)),
+                    "name": "K{sub|Hh} = %sH + %s" % (np.round(k_S_H_div_S_h, 4), np.round(b_S_H_div_S_h, 4)),
                     "type": "line",
                     "showInLegend": True,
                     "dataPoints": {'x': X_S_H_div_S_h, 'y': y_S_H_div_S_h},
