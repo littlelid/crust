@@ -27,6 +27,8 @@ def fit_line_robust(X, y):
 
     regressor.fit(X_norm, y_norm)
 
+    R2 = regressor.score(X_norm, y_norm)
+
     X_plot = np.arange(-0.1, 1.1)
     y_plot = regressor.predict(X_plot.reshape(-1, 1))
 
@@ -39,7 +41,7 @@ def fit_line_robust(X, y):
     k = (y_range / X_range) * k_norm
     b = y_range * b_norm + y_min - k * X_min
 
-    return k, b, X_plot.tolist(), y_plot.tolist()
+    return k, b, X_plot.tolist(), y_plot.tolist(), R2
 
 def fit_main_force(deeps, stress):
     return fit_line_robust(deeps, stress)
@@ -50,12 +52,25 @@ def fit_S_H_div_S_v(deeps, S_H_div_S_v):
     X = 1./ (deeps + 1e-5)
     y = np.array(S_H_div_S_v)
 
-    k, b, _, _ = fit_line_robust(X, y)
+    k, b, _, _, R2 = fit_line_robust(X, y)
 
     deeps_plot = np.arange(np.min(deeps)*0.9, np.max(deeps)*1.1)
     K_HV = k * (1. / (deeps_plot+1e-5)) + b
 
-    return k, b, deeps_plot.tolist(), K_HV.tolist()
+    return k, b, deeps_plot.tolist(), K_HV.tolist(), R2
+
+def fit_S_A_div_S_v(deeps, S_A_div_S_v):
+    #y = k/H + b
+    deeps = np.array(deeps)
+    X = 1. / (deeps + 1e-5)
+    y = np.array(S_A_div_S_v)
+
+    k, b, _, _, R2 = fit_line_robust(X, y)
+
+    deeps_plot = np.arange(np.min(deeps)*0.9, np.max(deeps)*1.1)
+    K_AV = k * (1. / (deeps_plot+1e-5)) + b
+
+    return k, b, deeps_plot.tolist(), K_AV.tolist(), R2
 
 def fit_S_H_div_S_h(deeps, S_H_div_S_h):
     return fit_line_robust(deeps, S_H_div_S_h)
