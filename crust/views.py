@@ -1082,24 +1082,18 @@ def calculate_main_force(request, drill_id, data_type):
         #                 3.6475,]
         lines_main_force = [
             {
-                "name": "S{sub|H} (%s)" % data_type,
+                "name": "S{sub|H}",
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_H, 'y': S_Hs},
             },
             {
-                "name": "S{sub|h} (%s)" % data_type,
+                "name": "S{sub|h}",
                 "type": "scatter",
                 "markerType": "circle",
                 "showInLegend": True,
                 "dataPoints": {'x': deeps_S_h, 'y': S_hs},
-            },
-            {
-                "name": "S{sub|V} = 0.001*liquidDensity*H ",
-                "type": "line",
-                "showInLegend": True,
-                "dataPoints": {'x': deeps, 'y': S_vs},
             },
         ]
 
@@ -1143,6 +1137,14 @@ def calculate_main_force(request, drill_id, data_type):
                     "dataPoints": {'x': [], 'y': []},
                 },
             )
+        lines_main_force.append(
+            {
+                "name": "S{sub|V} = 0.001*liquidDensity*H ",
+                "type": "line",
+                "showInLegend": True,
+                "dataPoints": {'x': deeps, 'y': S_vs},
+            },
+        )
 
         lines_K_AV = [
             {
