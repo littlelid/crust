@@ -215,7 +215,7 @@ def estimate_pr(pressure, st_sel, et_sel, samplingFreq=7):
                 "dataPoints": {"x": X_pred, "y": y_pred},
             },
             {
-                "name": "Pr = " + str(round(pr, 4)),
+                "name": "Pressure = " + str(round(pr, 4)),
                 "type": "line",
                 "lineDashType": "dash",
                 "showInLegend": True,
@@ -322,7 +322,7 @@ def estimate_ps_tangent(pressure, st_sel, et_sel, samplingFreq=7):
             },
 
             {
-                "name": "Ps = " + str(round(ps, 4)),
+                "name": "Pressure = " + str(round(ps, 4)),
                 "type": "line",
                 "lineDashType": "dash",
                 "showInLegend": True,
@@ -446,7 +446,7 @@ def estimate_ps_muskat(pressure, st_sel, et_sel, samplingFreq=7):
             },
 
             {
-                "name": "Ps = " + str(round(ps,4)),
+                "name": "Pressure = " + str(round(ps,4)),
                 "type": "line",
                 "lineDashType": "dash",
                 "showInLegend": True,
