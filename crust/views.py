@@ -689,12 +689,24 @@ def pressure(request, drill_id, deep, data_type, action=None):
                     for field in fields:
                         broken = False
 
+                        broken_cnt = 0
+                        last_valid = None
+                        raw = []
                         for obj in objs:
                             if not isfloat(obj[field]):
-                                broken = True
-                                break
+                                if last_valid is None:
+                                    raw.append(0)
+                                else:
+                                    raw.append(last_valid)
+                                broken_cnt += 1
+                            else:
+                                raw.append(obj[field])
+                                last_valid = obj[field]
 
-                        raw = [obj[field] for obj in objs]
+                        if last_valid is None:
+                            broken = True
+
+                        #raw = [obj[field] for obj in objs]
 
                         if not broken:
                             raw = np.array(raw, dtype=np.float16).tolist()
@@ -751,16 +763,41 @@ def pressure(request, drill_id, deep, data_type, action=None):
                     for field in fields:
                         broken = False
 
+                        #for obj in objs:
+                        #    if not isfloat(obj[field]):
+                        #        print(obj[field])
+                        #        broken = True
+                        #        break
+                        #raw = [obj[field] for obj in objs]
+
+                        #if not broken:
+                        #    raw = np.array(raw, dtype=np.float16).tolist()
+
+                        broken_cnt = 0
+                        last_valid = None
+                        raw = []
                         for obj in objs:
                             if not isfloat(obj[field]):
-                                print(obj[field])
-                                broken = True
-                                break
+                                if last_valid is None:
+                                    raw.append(0)
+                                else:
+                                    raw.append(last_valid)
+                                broken_cnt += 1
+                            else:
+                                raw.append(obj[field])
+                                last_valid = obj[field]
 
-                        raw = [obj[field] for obj in objs]
+                        if last_valid is None:
+                            broken = True
+
+                        #raw = [obj[field] for obj in objs]
 
                         if not broken:
                             raw = np.array(raw, dtype=np.float16).tolist()
+
+
+
+
 
                         if len(raw) <= samplingFreq or samplingFreq <=1 or broken:
                             print(field, "Skip Smooth")
