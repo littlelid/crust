@@ -1000,7 +1000,7 @@ def calculate_main_force(request, drill_id, data_type):
             P_s_list = []
             for method in [1, 2, 3, 4]:
                 P_s_objs = Calculation.objects.filter(record_id__exact=record.id, stress_type="ps", method=method).order_by('-time')
-                if len(P_r_objs) > 0 and isfloat(P_s_objs[0].stress):
+                if len(P_s_objs) > 0 and isfloat(P_s_objs[0].stress):
                     P_s_list.append(float(P_s_objs[0].stress))
             if len(P_s_list) > 0:
                 P_s = np.mean(P_s_list)
